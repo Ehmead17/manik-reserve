@@ -858,6 +858,20 @@ function openAppointmentModal(apptId = null) {
     const mealPlan = document.getElementById('apptMealPlan').value;
     const comments = document.getElementById('apptComments').value.trim();
     
+    // Auto-add text from search box if no guest has been added yet
+    const searchVal = searchInput.value.trim();
+    if (selectedGuests.length === 0 && customGuests.length === 0 && searchVal) {
+      const nameParts = searchVal.split(' ');
+      const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
+      customGuests.push({
+        id: 'cg_' + Date.now() + Math.random(),
+        name: searchVal,
+        initials: initials,
+        room: 'Ext',
+        pax: 1
+      });
+    }
+
     const totalPax = selectedGuests.length + customGuests.length;
     if (totalPax === 0) { alert('Select or add at least one guest'); return; }
     if (!time) { alert('Select a time slot'); return; }
