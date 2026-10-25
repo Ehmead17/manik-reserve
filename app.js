@@ -290,9 +290,9 @@ function renderAppointments() {
     const slotAppts = getAppointmentsFor(outlet.id, state.selectedDate).filter(a => a.time === time);
     const used = slotAppts.reduce((s, a) => s + a.pax, 0);
     const cards = slotAppts.map(a => {
-      const primary = a.guestIds[0] ? getGuestById(a.guestIds[0]) : null;
-      const name = primary ? `${primary.title} ${primary.lastName}` : (a.customGuestName || 'Guest');
-      const more = a.guestIds.length > 1 ? `+${a.guestIds.length - 1}` : '';
+      const primaryName = a.customGuests && a.customGuests.length ? a.customGuests[0].name : (a.guestIds[0] ? (() => { const g = getGuestById(a.guestIds[0]); return g ? `${g.title} ${g.lastName}` : 'Guest'; })() : 'Guest');
+      const totalGuestsCount = (a.customGuests?.length || 0) + (a.guestIds?.length || 0);
+      const more = totalGuestsCount > 1 ? `+${totalGuestsCount - 1}` : '';
       const allergies = detectAllergies(a.comments);
       
       let allergyTagsHtml = '';
@@ -302,7 +302,7 @@ function renderAppointments() {
 
       return `<div class="guest-card ${allergies.length ? 'has-allergy' : ''}" data-appt="${a.id}">
         <div class="gc-room">${a.room || 'Ext'}${a.mealPlan ? ' · ' + a.mealPlan : ''}</div>
-        <div class="gc-name">${name}</div>
+        <div class="gc-name">${primaryName}</div>
         <div class="gc-meta"><span>${appointmentTypes.find(t => t.id === a.type)?.name || a.type}</span>
         ${more ? `<span>${more}</span>` : ''}</div>
         ${allergyTagsHtml}
@@ -363,7 +363,7 @@ function renderReports() {
   appts.forEach(a => {
     const res = getReservation(a.reservationId);
     if (res) { totalAdults += res.adults; totalChildren += res.children; }
-    else if (a.isCustom) { totalAdults += a.pax; }
+    totalAdults += (a.customGuests?.length || 0);
   });
   const summary = daySummary(outlet.name, appts, getReservation);
   let rows = '';
@@ -373,7 +373,7 @@ function renderReports() {
     group.forEach(a => {
       const res = getReservation(a.reservationId);
       if (res) { ga += res.adults; gc += res.children; }
-      else if (a.isCustom) { ga += a.pax; }
+      ga += (a.customGuests?.length || 0);
     });
     rows += `<tr class="slot-header"><td colspan="8">${formatTime(time)} · Adults: ${ga} · Children: ${gc}</td></tr>`;
     group.forEach(a => {
@@ -399,15 +399,18 @@ function renderReports() {
               ${idx === 0 ? allergyTagsHtml : ''}
             </td></tr>`;
         });
-      } else if (a.isCustom) {
-        rows += `<tr>
-          <td>${a.room || 'Ext'}</td>
-          <td><strong>${a.customGuestName}</strong> (Custom Guest)</td>
-          <td>—</td><td>—</td><td>—</td><td>${mp}</td>
-          <td>${a.pax}A</td>
-          <td class="allergy-note">${a.comments || ''}
-            ${allergyTagsHtml}
-          </td></tr>`;
+      }
+      if (a.customGuests && a.customGuests.length) {
+        a.customGuests.forEach((cg, idx) => {
+          rows += `<tr>
+            <td>Ext</td>
+            <td><strong>${cg.name}</strong> (Custom Guest)</td>
+            <td>—</td><td>—</td><td>—</td><td>${mp}</td>
+            <td>1A</td>
+            <td class="allergy-note">${idx === 0 ? (a.comments || '') : ''}
+              ${idx === 0 ? allergyTagsHtml : ''}
+            </td></tr>`;
+        });
       }
     });
   });
@@ -612,48 +615,36 @@ function openAppointmentModal(apptId = null) {
   const defaultPerSlot = period ? Math.ceil(period.maxPax / Math.max(slots.length - 2, 1)) : 8;
   
   let selectedGuests = [];
+  let customGuests = appt?.customGuests ? JSON.parse(JSON.stringify(appt.customGuests)) : [];
   let selectedReservation = null;
-  let customGuest = appt?.isCustom ? { name: appt.customGuestName, room: appt.room || 'Ext', pax: appt.pax } : null;
   let currentMealPlan = appt?.mealPlan || 'HB';
 
-  if (appt && !appt.isCustom) {
-    selectedReservation = getReservation(appt.reservationId);
+  if (appt && !appt.isCustom && appt.guestIds) {
     selectedGuests = appt.guestIds.map(id => getGuestById(id)).filter(Boolean);
-    if (selectedReservation) currentMealPlan = selectedReservation.billing;
   }
+  if (appt && appt.reservationId) {
+    selectedReservation = getReservation(appt.reservationId);
+    if (selectedReservation?.billing) currentMealPlan = selectedReservation.billing;
+  }
+
   const slotCovers = {};
   slots.forEach(t => {
     slotCovers[t] = getAppointmentsFor(outlet.id, state.selectedDate)
       .filter(a => a.time === t && a.id !== apptId)
       .reduce((s, a) => s + a.pax, 0);
   });
+
   const modalRoot = document.getElementById('modalRoot');
   modalRoot.classList.remove('hidden');
   modalRoot.innerHTML = `
     <div class="modal" style="max-width:600px">
-      <div class="modal-header"><h2>${isEdit ? 'Edit Appointment' : 'New Appointment'}</h2>
+      <div class="modal-header"><h2>${isEdit ? 'Edit Appointment' : 'Appointment Management'}</h2>
         <button class="modal-close" id="modalClose">×</button></div>
       <div class="modal-body">
         <div class="form-group relative">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <label style="margin-bottom:0;">Search for Profiles (Room / Confirmation) — Mock Opera</label>
-            <button class="btn btn-secondary" id="btnAddCustomGuest" style="padding:2px 8px; font-size:11.5px;">+ Add Custom Guest</button>
-          </div>
-          <input type="text" id="profileSearch" placeholder="Room number or confirmation…" autocomplete="off" />
-          <div class="form-hint">Try: 222, 118, 210, SSK-77102 or click Add Custom Guest</div>
+          <label>Search for Profiles</label>
+          <input type="text" id="profileSearch" placeholder="Room number, confirmation, or guest name…" autocomplete="off" />
           <div id="profileResults" class="search-results hidden"></div>
-        </div>
-
-        <div id="customGuestFormContainer" class="hidden" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:12px; margin-bottom:14px;">
-          <h3 style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--accent,#38bdf8);">Add Non-Opera / Custom Guest</h3>
-          <div class="form-row" style="grid-template-columns:2fr 1fr 1fr; margin-bottom:8px;">
-            <input type="text" id="cgName" placeholder="Guest Full Name" style="background:rgba(255,255,255,0.05); border:1px solid var(--sand-200); color:#fff; padding:6px 10px; border-radius:4px; font-size:13px;" value="${customGuest?.name || ''}" />
-            <input type="text" id="cgRoom" placeholder="Room/Ext" style="background:rgba(255,255,255,0.05); border:1px solid var(--sand-200); color:#fff; padding:6px 10px; border-radius:4px; font-size:13px;" value="${customGuest?.room || 'Ext'}" />
-            <input type="number" id="cgPax" placeholder="Pax" min="1" max="20" style="background:rgba(255,255,255,0.05); border:1px solid var(--sand-200); color:#fff; padding:6px 10px; border-radius:4px; font-size:13px;" value="${customGuest?.pax || 2}" />
-          </div>
-          <div style="text-align:right;">
-            <button class="btn btn-primary" id="cgSaveBtn" style="padding:4px 12px; font-size:12px;">Save Custom Guest</button>
-          </div>
         </div>
 
         <div class="form-row">
@@ -683,8 +674,8 @@ function openAppointmentModal(apptId = null) {
         </div>
 
         <div id="conflictWarning" class="ai-banner critical hidden" style="margin-bottom:12px"></div>
-        <div class="form-group"><label>Guests</label><div class="guest-chips" id="guestChips"></div></div>
-        <div class="form-group"><label>Comments / Allergies</label>
+        <div class="form-group"><label>Guests</label><div id="guestChips"></div></div>
+        <div class="form-group"><label>Comments</label>
           <textarea id="apptComments" placeholder="Allergies, special requests…">${appt?.comments || ''}</textarea>
           <div id="allergyPreview" class="allergy-tags" style="margin-top:8px"></div></div>
       </div>
@@ -696,43 +687,63 @@ function openAppointmentModal(apptId = null) {
 
   function renderChips() {
     const el = document.getElementById('guestChips');
-    if (!selectedGuests.length && !customGuest) {
+    if (!selectedGuests.length && !customGuests.length) {
       el.innerHTML = '<span style="color:var(--ink-400);font-size:13px">No guests selected yet</span>';
       updateSuggestions(); return;
     }
     let html = '';
-    if (customGuest) {
+    
+    // Render custom guests
+    customGuests.forEach(cg => {
       html += `
-        <div class="guest-chip" style="border-color:var(--accent,#38bdf8)">
-          <div class="chip-avatar" style="background:#0284c7">CG</div>
-          <div class="chip-info"><strong>${customGuest.name}</strong>
-          <span>Custom Guest · Room ${customGuest.room} · ${customGuest.pax} Pax</span></div>
-          <button class="chip-remove" id="removeCustomGuest">Remove</button>
+        <div class="guest-chip" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:8px 12px; margin-bottom:6px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:32px; height:32px; background:var(--surface-dark,#0f172a); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; color:var(--accent,#38bdf8);">${cg.initials}</div>
+            <div>
+              <div style="font-weight:600; font-size:13.5px; color:#fff;">${cg.name}</div>
+              <div style="font-size:12px; color:var(--ink-400);">Custom Guest</div>
+            </div>
+          </div>
+          <button class="btn btn-sm" data-remove-cg="${cg.id}" style="background:transparent; color:#ef4444; border:none; cursor:pointer; font-size:12px; font-weight:500;">Remove</button>
         </div>`;
-    }
-    html += selectedGuests.map(g => `
-      <div class="guest-chip"><div class="chip-avatar">${(g.firstName[0]+g.lastName[0]).toUpperCase()}</div>
-        <div class="chip-info"><strong>${g.title} ${g.firstName} ${g.lastName}</strong>
-        <span>Room ${g.room} · ${g.billing || ''}</span></div>
-        <button class="chip-remove" data-remove="${g.id}">Remove</button></div>`).join('');
-    
+    });
+
+    // Render Opera guests
+    selectedGuests.forEach(g => {
+      html += `
+        <div class="guest-chip" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:8px 12px; margin-bottom:6px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:32px; height:32px; background:var(--surface-dark,#0f172a); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; color:var(--accent,#38bdf8);">${(g.firstName?.[0] || 'G') + (g.lastName?.[0] || '')}</div>
+            <div>
+              <div style="font-weight:600; font-size:13.5px; color:#fff;">${g.title || ''} ${g.firstName || ''} ${g.lastName || ''}</div>
+              <div style="font-size:12px; color:var(--ink-400);">Room ${g.room} · ${g.billing || ''}</div>
+            </div>
+          </div>
+          <button class="btn btn-sm" data-remove-guest="${g.id}" style="background:transparent; color:#ef4444; border:none; cursor:pointer; font-size:12px; font-weight:500;">Remove</button>
+        </div>`;
+    });
+
     el.innerHTML = html;
-    
-    if (customGuest) {
-      document.getElementById('removeCustomGuest').onclick = () => {
-        customGuest = null;
+
+    el.querySelectorAll('[data-remove-cg]').forEach(btn => {
+      btn.onclick = () => {
+        customGuests = customGuests.filter(cg => cg.id !== btn.dataset.removeCg);
         renderChips();
       };
-    }
-    el.querySelectorAll('[data-remove]').forEach(btn => {
-      btn.onclick = () => { selectedGuests = selectedGuests.filter(g => g.id !== btn.dataset.remove); renderChips(); };
     });
+    el.querySelectorAll('[data-remove-guest]').forEach(btn => {
+      btn.onclick = () => {
+        selectedGuests = selectedGuests.filter(g => g.id !== btn.dataset.removeGuest);
+        renderChips();
+      };
+    });
+
     updateSuggestions(); checkConflicts();
   }
 
   function updateSuggestions() {
     const el = document.getElementById('suggestChips');
-    const totalPax = customGuest ? customGuest.pax : selectedGuests.length;
+    const totalPax = selectedGuests.length + customGuests.length;
     if (!totalPax) {
       el.innerHTML = '<span style="color:var(--ink-400);font-size:12px">Select guests first</span>'; return;
     }
@@ -773,51 +784,66 @@ function openAppointmentModal(apptId = null) {
   renderChips(); updateAllergyPreview();
   document.getElementById('apptComments').oninput = updateAllergyPreview;
 
-  document.getElementById('btnAddCustomGuest').onclick = () => {
-    const formContainer = document.getElementById('customGuestFormContainer');
-    formContainer.classList.toggle('hidden');
-  };
-
-  document.getElementById('cgSaveBtn').onclick = () => {
-    const name = document.getElementById('cgName').value.trim();
-    const room = document.getElementById('cgRoom').value.trim() || 'Ext';
-    const pax = parseInt(document.getElementById('cgPax').value) || 2;
-    if (!name) { alert('Please enter guest name'); return; }
-    customGuest = { name, room, pax };
-    selectedReservation = null;
-    selectedGuests = [];
-    document.getElementById('profileSearch').value = `Custom: ${name}`;
-    document.getElementById('customGuestFormContainer').classList.add('hidden');
-    renderChips();
-  };
-
   const searchInput = document.getElementById('profileSearch');
   const resultsEl = document.getElementById('profileResults');
+  
   searchInput.oninput = () => {
-    const results = searchOpera(searchInput.value);
-    if (!results.length) { resultsEl.classList.add('hidden'); return; }
+    const q = searchInput.value.trim();
+    if (!q) { resultsEl.classList.add('hidden'); return; }
+    const results = searchOpera(q);
+    
+    let html = '';
+    if (results.length) {
+      html += results.map(res => `
+        <div class="search-result-item" data-res="${res.reservationId}">
+          <span class="sr-room">${res.room}</span>
+          <div><div class="sr-name">${res.guests.map(g => g.lastName).join(' / ')}</div>
+          <div class="sr-meta">${res.confirmation} · ${res.adults}A${res.children ? '+' + res.children + 'C' : ''} · ${res.butler}</div></div>
+        </div>`).join('');
+    } else {
+      html += `<div style="padding:10px 14px; color:var(--ink-400); font-size:13px;">No reservations found</div>`;
+    }
+
+    html += `
+      <div class="search-result-item" id="addCustomProfileOption" style="border-top:1px solid var(--sand-200,#334155); color:var(--accent,#38bdf8); font-weight:500; padding:10px 14px; cursor:pointer;">
+        + Add "${q}" as custom guest
+      </div>`;
+
     resultsEl.classList.remove('hidden');
-    resultsEl.innerHTML = results.map(res => `
-      <div class="search-result-item" data-res="${res.reservationId}">
-        <span class="sr-room">${res.room}</span>
-        <div><div class="sr-name">${res.guests.map(g => g.lastName).join(' / ')}</div>
-        <div class="sr-meta">${res.confirmation} · ${res.adults}A${res.children ? '+' + res.children + 'C' : ''} · ${res.butler}</div></div>
-      </div>`).join('');
-    resultsEl.querySelectorAll('.search-result-item').forEach(item => {
+    resultsEl.innerHTML = html;
+
+    resultsEl.querySelectorAll('[data-res]').forEach(item => {
       item.onclick = () => {
         const res = getReservation(item.dataset.res);
         selectedReservation = res;
-        selectedGuests = res.guests.map(g => ({ ...g, room: res.room, billing: res.billing }));
-        customGuest = null;
+        selectedGuests.push(...res.guests.map(g => ({ ...g, room: res.room, billing: res.billing })));
         if (res.billing) {
           document.getElementById('apptMealPlan').value = res.billing;
         }
         if (res.notes) { document.getElementById('apptComments').value = res.notes; updateAllergyPreview(); }
-        searchInput.value = `Room ${res.room}`;
+        searchInput.value = '';
         resultsEl.classList.add('hidden');
         renderChips();
       };
     });
+
+    const addCustomOpt = document.getElementById('addCustomProfileOption');
+    if (addCustomOpt) {
+      addCustomOpt.onclick = () => {
+        const nameParts = q.split(' ');
+        const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
+        customGuests.push({
+          id: 'cg_' + Date.now() + Math.random(),
+          name: q,
+          initials: initials,
+          room: 'Ext',
+          pax: 1
+        });
+        searchInput.value = '';
+        resultsEl.classList.add('hidden');
+        renderChips();
+      };
+    }
   };
 
   const close = () => { modalRoot.classList.add('hidden'); modalRoot.innerHTML = ''; };
@@ -832,42 +858,43 @@ function openAppointmentModal(apptId = null) {
     const mealPlan = document.getElementById('apptMealPlan').value;
     const comments = document.getElementById('apptComments').value.trim();
     
-    if (!selectedReservation && !selectedGuests.length && !customGuest) { alert('Select or add a guest first'); return; }
+    const totalPax = selectedGuests.length + customGuests.length;
+    if (totalPax === 0) { alert('Select or add at least one guest'); return; }
     if (!time) { alert('Select a time slot'); return; }
 
     if (isEdit) {
       const idx = state.appointments.findIndex(a => a.id === apptId);
-      if (customGuest) {
-        state.appointments[idx] = {
-          ...state.appointments[idx], outletId, time, type, mealPlan, comments,
-          isCustom: true, customGuestName: customGuest.name, room: customGuest.room,
-          guestIds: [], pax: customGuest.pax, reservationId: null
-        };
-      } else {
-        state.appointments[idx] = {
-          ...state.appointments[idx], outletId, time, type, mealPlan, comments,
-          isCustom: false, customGuestName: null,
-          reservationId: selectedReservation.reservationId, room: selectedReservation.room,
-          guestIds: selectedGuests.map(g => g.id), pax: selectedGuests.length
-        };
-      }
+      state.appointments[idx] = {
+        ...state.appointments[idx],
+        outletId,
+        time,
+        type,
+        mealPlan,
+        comments,
+        customGuests: customGuests,
+        reservationId: selectedReservation ? selectedReservation.reservationId : state.appointments[idx].reservationId,
+        room: selectedReservation ? selectedReservation.room : state.appointments[idx].room,
+        guestIds: selectedGuests.map(g => g.id),
+        pax: totalPax
+      };
       logAudit('Updated appointment', `→ ${getOutlet(outletId).name} ${time}`);
       toast('Appointment updated');
     } else {
-      if (customGuest) {
-        state.appointments.push({
-          id: 'a' + Date.now(), outletId, date: state.selectedDate, time, type, mealPlan,
-          isCustom: true, customGuestName: customGuest.name, room: customGuest.room,
-          guestIds: [], pax: customGuest.pax, comments, createdBy: state.user.name
-        });
-      } else {
-        state.appointments.push({
-          id: 'a' + Date.now(), outletId, date: state.selectedDate, time, type, mealPlan,
-          reservationId: selectedReservation.reservationId, room: selectedReservation.room,
-          guestIds: selectedGuests.map(g => g.id), pax: selectedGuests.length, comments,
-          createdBy: state.user.name
-        });
-      }
+      state.appointments.push({
+        id: 'a' + Date.now(),
+        outletId,
+        date: state.selectedDate,
+        time,
+        type,
+        mealPlan,
+        customGuests: customGuests,
+        reservationId: selectedReservation ? selectedReservation.reservationId : null,
+        room: selectedReservation ? selectedReservation.room : 'Ext',
+        guestIds: selectedGuests.map(g => g.id),
+        pax: totalPax,
+        comments,
+        createdBy: state.user.name
+      });
       logAudit('Created appointment', `→ ${getOutlet(outletId).name} ${time}`);
       toast('Appointment created');
     }
