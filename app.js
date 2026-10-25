@@ -64,6 +64,29 @@ function formatTime(t) {
   const [h, m] = t.split(':').map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
+function getNationalityCode(nat) {
+  if (!nat) return 'GB';
+  const upper = nat.toUpperCase();
+  if (upper.length <= 3) return upper;
+  const map = {
+    'UNITED KINGDOM': 'GB',
+    'BRITISH': 'GB',
+    'RUSSIA': 'RU',
+    'RUSSIAN': 'RU',
+    'MALDIVES': 'MV',
+    'MALDIVIAN': 'MV',
+    'GERMANY': 'DE',
+    'GERMAN': 'DE',
+    'FRANCE': 'FR',
+    'FRENCH': 'FR',
+    'UNITED STATES': 'US',
+    'USA': 'US',
+    'AUSTRALIA': 'AU',
+    'CHINA': 'CN',
+    'INDIA': 'IN'
+  };
+  return map[upper] || upper.slice(0, 2);
+}
 function getOutlet(id) { return state.outlets.find(o => o.id === id); }
 function getAppointmentsFor(outletId, date) {
   return state.appointments.filter(a => a.outletId === outletId && a.date === date);
@@ -391,10 +414,11 @@ function renderReports() {
 
       if (res) {
         res.guests.forEach((g, idx) => {
+          const natCode = getNationalityCode(g.nationality);
           rows += `<tr>
             <td>${res.room}</td><td>${g.title} ${g.firstName} ${g.lastName}</td>
             <td>${idx === 0 ? (res.butler || '') : ''}</td>
-            <td>${idx === 0 ? formatShortDate(res.arrival) : ''}</td>
+            <td>${idx === 0 ? natCode : ''}</td>
             <td>${idx === 0 ? formatShortDate(res.departure) : ''}</td>
             <td>${idx === 0 ? mp : ''}</td>
             <td>${idx === 0 ? `${res.adults}A${res.children ? ' + ' + res.children + 'C' : ''}` : ''}</td>
@@ -408,7 +432,7 @@ function renderReports() {
           rows += `<tr>
             <td>Ext</td>
             <td><strong>${cg.name}</strong> (Custom Guest)</td>
-            <td>—</td><td>—</td><td>—</td><td>${mp}</td>
+            <td>—</td><td>${cg.nationalityCode ? cg.nationalityCode.toUpperCase() : '—'}</td><td>—</td><td>${mp}</td>
             <td>1A</td>
             <td class="allergy-note">${idx === 0 ? (a.comments || '') : ''}
               ${idx === 0 ? allergyTagsHtml : ''}
@@ -424,8 +448,8 @@ function renderReports() {
     <div class="ai-banner"><div class="ai-icon">AI</div><div>${summary}</div></div>
     <div style="background:white;border:1px solid var(--sand-200);border-radius:12px;overflow:hidden;">
       <table class="report-table"><thead><tr>
-        <th>Room</th><th>Name</th><th>Butler</th>
-        <th>Arrival</th><th>Departure</th><th>Meal Plan</th><th>Pax</th><th>Notes</th>
+        <th>Room</th><th>Name</th><th>GEM</th>
+        <th>Nationality</th><th>Departure</th><th>Meal Plan</th><th>Pax</th><th>Notes</th>
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ink-400)">No reservations</td></tr>'}</tbody>
       </table></div>`;
@@ -646,10 +670,13 @@ function openAppointmentModal(apptId = null) {
       <div class="modal-body">
         <div class="form-group relative">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <label style="margin:0;">Search for Profiles</label>
-            <button type="button" class="btn btn-secondary btn-sm" id="btnAddCB" style="padding:4px 12px; font-size:12px; font-weight:600; background:var(--accent,#38bdf8); color:#0f172a; border:none; border-radius:6px; cursor:pointer;" title="Add Custom Booking">+CB</button>
+            <label style="margin:0;">Search Profiles or Add Custom Guest (+CB)</label>
           </div>
-          <input type="text" id="profileSearch" placeholder="Room number, confirmation, or guest name…" autocomplete="off" />
+          <div style="display:flex; gap:8px; margin-bottom:6px;">
+            <input type="text" id="profileSearch" placeholder="Room number, confirmation, or guest name…" autocomplete="off" style="flex:1;" />
+            <input type="text" id="customNationality" placeholder="Nat (e.g. GB, RU)" maxlength="3" style="width:120px; text-transform:uppercase;" />
+            <button type="button" class="btn btn-secondary" id="btnAddCB" style="padding:0 14px; font-size:12px; font-weight:600; background:var(--accent,#38bdf8); color:#0f172a; border:none; border-radius:6px; cursor:pointer;" title="Add Custom Booking">+CB</button>
+          </div>
           <div id="profileResults" class="search-results hidden"></div>
         </div>
 
@@ -713,7 +740,7 @@ function openAppointmentModal(apptId = null) {
           <div style="display:flex; align-items:center; gap:10px;">
             <div style="width:32px; height:32px; background:var(--surface-dark,#0f172a); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; color:var(--accent,#38bdf8);">${cg.initials}</div>
             <div>
-              <div style="font-weight:600; font-size:13.5px; color:#fff;">${cg.name}</div>
+              <div style="font-weight:600; font-size:13.5px; color:#fff;">${cg.name} ${cg.nationalityCode ? '[' + cg.nationalityCode.toUpperCase() + ']' : ''}</div>
               <div style="font-size:12px; color:var(--ink-400);">Custom Guest</div>
             </div>
           </div>
@@ -805,14 +832,18 @@ function openAppointmentModal(apptId = null) {
     if (!q) return;
     const nameParts = q.split(' ');
     const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
+    const nationalityCode = document.getElementById('customNationality').value.trim();
+
     customGuests.push({
       id: 'cg_' + Date.now() + Math.random(),
       name: q,
       initials: initials,
       room: 'Ext',
-      pax: 1
+      pax: 1,
+      nationalityCode
     });
     searchInput.value = '';
+    document.getElementById('customNationality').value = '';
     resultsEl.classList.add('hidden');
     renderChips();
   }
@@ -882,12 +913,14 @@ function openAppointmentModal(apptId = null) {
     if (selectedGuests.length === 0 && customGuests.length === 0 && searchVal) {
       const nameParts = searchVal.split(' ');
       const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
+      const nationalityCode = document.getElementById('customNationality').value.trim();
       customGuests.push({
         id: 'cg_' + Date.now() + Math.random(),
         name: searchVal,
         initials: initials,
         room: 'Ext',
-        pax: 1
+        pax: 1,
+        nationalityCode
       });
     }
 
@@ -1138,7 +1171,7 @@ function showGuestItinerary(res) {
     <div style="text-align:left;background:white;border:1px solid var(--sand-200);border-radius:12px;padding:20px;">
       <h3 style="margin-bottom:4px">${res.guests.map(g => `${g.title} ${g.firstName} ${g.lastName}`).join(' & ')}</h3>
       <p style="color:var(--ink-400);font-size:13.5px;margin-bottom:16px">
-        Room ${res.room} · ${res.confirmation} · Butler ${res.butler} · ${formatShortDate(res.arrival)} → ${formatShortDate(res.departure)}</p>
+        Room ${res.room} · ${res.confirmation} · GEM ${res.butler} · ${formatShortDate(res.arrival)} → ${formatShortDate(res.departure)}</p>
       ${guestAppts.map(a => {
         const o = getOutlet(a.outletId);
         const allergies = detectAllergies(a.comments);
