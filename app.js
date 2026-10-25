@@ -234,15 +234,22 @@ function renderAppointments() {
   const outlet = getOutlet(state.selectedOutletId);
   if (!outlet) return '<p>Select an outlet</p>';
   const period = outlet.operatingPeriods[outlet.operatingPeriods.length - 1];
-  const slots = generateTimeSlots(period.start, period.end, 30);
+  
+  // Use custom saved slots if available, otherwise generate them
+  const slots = period.slots ? period.slots.map(s => s.time) : generateTimeSlots(period.start, period.end, 30);
   const maxPax = period.maxPax;
-  const perSlot = Math.ceil(maxPax / Math.max(slots.length - 2, 1));
+  const defaultPerSlot = Math.ceil(maxPax / Math.max(slots.length - 2, 1));
+
   const totalCovers = getCovers(outlet.id, state.selectedDate);
   const fc = forecastDemand(outlet.name, totalCovers, maxPax);
   const sideItems = state.outlets.filter(o => o.active).map(o =>
     `<button class="outlet-side-item ${o.id === state.selectedOutletId ? 'active' : ''}" data-outlet="${o.id}">
       <span class="outlet-side-dot"></span>${o.short}</button>`).join('');
+
   const rows = slots.map(time => {
+    const slotConfig = period.slots?.find(s => s.time === time);
+    const perSlot = slotConfig ? slotConfig.maxPax : defaultPerSlot;
+
     const slotAppts = getAppointmentsFor(outlet.id, state.selectedDate).filter(a => a.time === time);
     const used = slotAppts.reduce((s, a) => s + a.pax, 0);
     const cards = slotAppts.map(a => {
@@ -263,6 +270,7 @@ function renderAppointments() {
       <span class="cap ${used >= perSlot ? 'full' : ''}">${used} / ${perSlot}</span></div>
       <div class="slot-cards">${cards}</div></div>`;
   }).join('');
+
   return `<div class="view-header"><div><h1>Appointments</h1><p>${formatDate(state.selectedDate)}</p></div>
     <div class="header-actions">
       <button class="btn btn-secondary" id="btnChangeDate">Change Date</button>
@@ -383,7 +391,7 @@ function renderAudit() {
 function openSlotCapacityModal() {
   const outlet = getOutlet(state.selectedOutletId);
   const period = outlet?.operatingPeriods[outlet.operatingPeriods.length - 1] || { name: 'Dinner', start: '18:30', end: '22:30', maxPax: 40 };
-  const slots = generateTimeSlots(period.start, period.end, 30);
+  const initialSlots = period.slots ? period.slots.map(s => s.time) : generateTimeSlots(period.start, period.end, 30);
   const modalRoot = document.getElementById('modalRoot');
   modalRoot.classList.remove('hidden');
   modalRoot.innerHTML = `
@@ -400,7 +408,7 @@ function openSlotCapacityModal() {
         <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
           <div class="form-group"><label>Start at</label><input type="time" id="capStart" value="${period.start || '18:30'}" /></div>
           <div class="form-group"><label>End at</label><input type="time" id="capEnd" value="${period.end || '22:30'}" /></div>
-          <div class="form-group"><label>Max Bookings / Day</label><input type="number" id="capMaxDay" value="${period.maxPax || 80}" /></div>
+          <div class="form-group"><label>Max Bookings / Day</label><input type="number" id="capMaxDay" value="${period.maxPax || 60}" /></div>
         </div>
         <div class="form-row" style="grid-template-columns:1fr 1fr">
           <div class="form-group"><label>Timeslots Enabled</label>
@@ -436,13 +444,16 @@ function openSlotCapacityModal() {
                 </tr>
               </thead>
               <tbody id="slotsTableBody">
-                ${slots.map(t => `
-                  <tr style="border-bottom:1px solid var(--sand-100,#1e293b);" data-time-row="${t}">
+                ${initialSlots.map(t => {
+                  const existing = period.slots?.find(s => s.time === t);
+                  const maxVal = existing ? existing.maxPax : Math.ceil(period.maxPax / initialSlots.length);
+                  return `
+                  <tr style="border-bottom:1px solid var(--sand-100,#1e293b);">
                     <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="${t}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
-                    <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="${Math.ceil(period.maxPax / slots.length) || 15}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
+                    <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="${maxVal}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
                     <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
                   </tr>
-                `).join('')}
+                `}).join('')}
               </tbody>
             </table>
           </div>
@@ -461,6 +472,24 @@ function openSlotCapacityModal() {
   document.getElementById('modalClose').onclick = close;
   document.getElementById('modalCancel').onclick = close;
   modalRoot.onclick = e => { if (e.target === modalRoot) close(); };
+
+  document.getElementById('btnGenSlots').onclick = () => {
+    const start = document.getElementById('capStart').value;
+    const end = document.getElementById('capEnd').value;
+    const defaultMax = parseInt(document.getElementById('genMaxPax').value) || 15;
+    const generatedTimes = generateTimeSlots(start, end, 30);
+    const tbody = document.getElementById('slotsTableBody');
+    tbody.innerHTML = generatedTimes.map(t => `
+      <tr style="border-bottom:1px solid var(--sand-100,#1e293b);">
+        <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="${t}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
+        <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="${defaultMax}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
+        <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
+      </tr>
+    `).join('');
+    tbody.querySelectorAll('.slot-delete-btn').forEach(btn => {
+      btn.onclick = (e) => e.target.closest('tr').remove();
+    });
+  };
 
   document.getElementById('btnAddTimeSlot').onclick = () => {
     const tbody = document.getElementById('slotsTableBody');
@@ -485,10 +514,24 @@ function openSlotCapacityModal() {
     const end = document.getElementById('capEnd').value;
     const maxPax = parseInt(document.getElementById('capMaxDay').value) || 40;
     
+    // Collect customized slots and max concurrent capacities from the table
+    const customSlots = [];
+    document.querySelectorAll('#slotsTableBody tr').forEach(tr => {
+      const tInput = tr.querySelector('.slot-time-input');
+      const mInput = tr.querySelector('.slot-max-input');
+      if (tInput && mInput) {
+        customSlots.push({
+          time: tInput.value,
+          maxPax: parseInt(mInput.value) || 15
+        });
+      }
+    });
+
     period.name = name;
     period.start = start;
     period.end = end;
     period.maxPax = maxPax;
+    period.slots = customSlots; // Save custom slot configuration directly to the outlet!
 
     logAudit('Updated slot capacities', `${outlet.name} slots updated`);
     toast('Slots capacity updated successfully');
@@ -502,8 +545,9 @@ function openAppointmentModal(apptId = null) {
   const appt = isEdit ? state.appointments.find(a => a.id === apptId) : null;
   const outlet = getOutlet(appt?.outletId || state.selectedOutletId);
   const period = outlet?.operatingPeriods[outlet.operatingPeriods.length - 1];
-  const slots = period ? generateTimeSlots(period.start, period.end, 30) : [];
-  const perSlot = period ? Math.ceil(period.maxPax / Math.max(slots.length - 2, 1)) : 8;
+  const slots = period?.slots ? period.slots.map(s => s.time) : (period ? generateTimeSlots(period.start, period.end, 30) : []);
+  const defaultPerSlot = period ? Math.ceil(period.maxPax / Math.max(slots.length - 2, 1)) : 8;
+  
   let selectedGuests = [];
   let selectedReservation = null;
   if (appt) {
@@ -535,7 +579,11 @@ function openAppointmentModal(apptId = null) {
               `<option value="${o.id}" ${o.id === (appt?.outletId || state.selectedOutletId) ? 'selected' : ''}>${o.name}</option>`).join('')}</select></div>
           <div class="form-group"><label>Time Slot</label>
             <select id="apptTime"><option value="">Select…</option>
-              ${slots.map(t => `<option value="${t}" ${appt?.time === t ? 'selected' : ''}>${formatTime(t)} (${slotCovers[t] || 0}/${perSlot})</option>`).join('')}
+              ${slots.map(t => {
+                const sc = period?.slots?.find(s => s.time === t);
+                const maxC = sc ? sc.maxPax : defaultPerSlot;
+                return `<option value="${t}" ${appt?.time === t ? 'selected' : ''}>${formatTime(t)} (${slotCovers[t] || 0}/${maxC})</option>`;
+              }).join('')}
             </select></div>
           <div class="form-group"><label>Appointment</label>
             <select id="apptType">${appointmentTypes.map(t =>
@@ -580,7 +628,16 @@ function openAppointmentModal(apptId = null) {
     if (!selectedGuests.length) {
       el.innerHTML = '<span style="color:var(--ink-400);font-size:12px">Select guests first</span>'; return;
     }
-    const suggestions = suggestTimeSlot(slots, slotCovers, perSlot, selectedGuests.length);
+    // Calculate perSlot dynamically using the custom capacity if present
+    const dynamicPerSlot = (t) => {
+      const sc = period?.slots?.find(s => s.time === t);
+      return sc ? sc.maxPax : defaultPerSlot;
+    };
+    const suggestions = slots.map(t => ({
+      time: t,
+      remaining: dynamicPerSlot(t) - (slotCovers[t] || 0)
+    })).filter(s => s.remaining >= selectedGuests.length).slice(0, 3);
+
     if (!suggestions.length) {
       el.innerHTML = '<span style="color:var(--coral-500);font-size:12px">No slots fit this party size</span>'; return;
     }
@@ -760,7 +817,6 @@ function bindViewEvents() {
   document.getElementById('btnPrintReport')?.addEventListener('click', () => window.print());
   document.getElementById('btnAddOutlet')?.addEventListener('click', () => openOutletModal());
   
-  // Action Menu dropdown bindings
   const actionMenuBtn = document.getElementById('actionMenuBtn');
   const actionMenuDropdown = document.getElementById('actionMenuDropdown');
   if (actionMenuBtn && actionMenuDropdown) {
