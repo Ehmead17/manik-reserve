@@ -36,6 +36,10 @@ const state = {
   selectedOutletId: 'bottega',
   appointments: JSON.parse(JSON.stringify(sampleAppointments)),
   outlets: customOutlets,
+  inHouseGuests: JSON.parse(localStorage.getItem('manik_inhouse_guests') || '[]'),
+  dietarySheet: JSON.parse(localStorage.getItem('manik_dietary_sheet') || '[]'),
+  inHouseUpdated: localStorage.getItem('manik_inhouse_updated') || 'Never',
+  dietaryUpdated: localStorage.getItem('manik_dietary_updated') || 'Never',
   auditLog: [
     { time: '2026-10-25 09:12', user: 'Aisha Hassan', action: 'Created appointment', detail: 'Room 222 → Bottega 18:30' },
     { time: '2026-10-25 09:45', user: 'Rashid Ali', action: 'Created appointment', detail: 'Room 118 → Bottega 18:30' },
@@ -162,6 +166,10 @@ function mountApp() {
         </nav>
       </div>
       <div class="topbar-right">
+        <button id="btnInHouseList" class="btn btn-secondary" title="Resort Operations Directory" style="display:inline-flex; align-items:center; gap:6px; padding: 6px 12px; margin-right: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 6px; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span style="font-size: 13px;">In-House</span>
+        </button>
         <div class="date-pill" id="currentDateDisplay"></div>
         <div class="user-menu">
           <button class="user-btn" id="userMenuBtn">
@@ -197,6 +205,13 @@ function mountApp() {
     document.getElementById('userDropdown').classList.toggle('hidden');
   };
   document.addEventListener('click', () => document.getElementById('userDropdown')?.classList.add('hidden'));
+  
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#btnInHouseList')) {
+      openInHouseModal();
+    }
+  });
+
   document.getElementById('userDropdown').onclick = e => {
     const a = e.target.dataset.action;
     if (a === 'admin') { state.view = 'admin'; render(); }
@@ -743,7 +758,6 @@ function openAppointmentModal(apptId = null) {
     }
     let html = '';
     
-    // Render custom guests
     customGuests.forEach(cg => {
       html += `
         <div class="guest-chip" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:8px 12px; margin-bottom:6px;">
@@ -758,7 +772,6 @@ function openAppointmentModal(apptId = null) {
         </div>`;
     });
 
-    // Render Opera guests
     selectedGuests.forEach(g => {
       html += `
         <div class="guest-chip" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:8px 12px; margin-bottom:6px;">
@@ -860,18 +873,48 @@ function openAppointmentModal(apptId = null) {
 
   document.getElementById('btnAddCB').onclick = addCurrentSearchAsCustom;
 
+  function searchProfiles(q) {
+    const query = q.toLowerCase();
+    const inHouseMatches = (state.inHouseGuests || []).filter(item => 
+      String(item.room).toLowerCase() === query || 
+      String(item.room).toLowerCase().includes(query) ||
+      item.guests.some(g => g.lastName.toLowerCase().includes(query))
+    );
+    
+    if (inHouseMatches.length > 0) {
+      return inHouseMatches.map(ih => ({
+        reservationId: 'ih_' + ih.room + '_' + Date.now(),
+        confirmation: 'INHOUSE-' + ih.room,
+        room: ih.room,
+        butler: ih.gem,
+        billing: ih.mealPlan,
+        arrival: ih.arrival || state.selectedDate,
+        departure: ih.departure,
+        adults: ih.adults,
+        children: ih.children || 0,
+        guests: ih.guests.map(g => ({
+          title: g.title || '',
+          firstName: g.firstName || '',
+          lastName: g.lastName || '',
+          nationality: g.nationality || 'GB'
+        }))
+      }));
+    }
+    return searchOpera(q);
+  }
+
   searchInput.oninput = () => {
     const q = searchInput.value.trim();
     if (!q) { resultsEl.classList.add('hidden'); return; }
-    const results = searchOpera(q);
+    const results = searchProfiles(q);
     
     let html = '';
     if (results.length) {
       html += results.map(res => `
         <div class="search-result-item" data-res="${res.reservationId}">
-          <span class="sr-room">${res.room}</span>
-          <div><div class="sr-name">${res.guests.map(g => g.lastName).join(' / ')}</div>
-          <div class="sr-meta">${res.confirmation} · ${res.adults}A${res.children ? '+' + res.children + 'C' : ''} · ${res.butler}</div></div>
+          <span class="sr-room">Villa ${res.room}</span>
+          <div><div class="sr-name">${res.guests.map(g => `${g.title || ''} ${g.lastName}`).join(' / ')}</div>
+          <div class="sr-meta">Dep: ${res.departure || '—'} · MP: ${res.billing || '—'} · GEM: ${res.butler || '—'}</div></div>
         </div>`).join('');
     } else {
       html += `<div style="padding:10px 14px; color:var(--ink-400); font-size:13px;">No reservations found</div>`;
@@ -887,13 +930,25 @@ function openAppointmentModal(apptId = null) {
 
     resultsEl.querySelectorAll('[data-res]').forEach(item => {
       item.onclick = () => {
-        const res = getReservation(item.dataset.res);
+        const matchedInHouse = (state.inHouseGuests || []).find(ih => 'ih_' + ih.room + '_' === item.dataset.res.slice(0, item.dataset.res.lastIndexOf('_') + 1));
+        const res = matchedInHouse ? results.find(r => r.reservationId === item.dataset.res) : getReservation(item.dataset.res);
+        
         selectedReservation = res;
         selectedGuests.push(...res.guests.map(g => ({ ...g, room: res.room, billing: res.billing })));
+        
         if (res.billing) {
           document.getElementById('apptMealPlan').value = res.billing;
         }
-        if (res.notes) { document.getElementById('apptComments').value = res.notes; updateAllergyPreview(); }
+
+        const dietaryRecord = (state.dietarySheet || []).find(d => String(d.room) === String(res.room));
+        const remarksField = document.getElementById('apptComments');
+        if (dietaryRecord && dietaryRecord.allergies) {
+          remarksField.value = `⚠️ Allergies / Preferences: ${dietaryRecord.allergies}`;
+        } else if (res.notes) { 
+          remarksField.value = res.notes; 
+        }
+        
+        updateAllergyPreview();
         searchInput.value = '';
         resultsEl.classList.add('hidden');
         renderChips();
@@ -918,7 +973,6 @@ function openAppointmentModal(apptId = null) {
     const mealPlan = document.getElementById('apptMealPlan').value;
     const comments = document.getElementById('apptComments').value.trim();
     
-    // Auto-add text from search box if no guest has been added yet
     const searchVal = searchInput.value.trim();
     if (selectedGuests.length === 0 && customGuests.length === 0 && searchVal) {
       const nameParts = searchVal.split(' ');
@@ -1054,6 +1108,126 @@ function openOutletModal(outletId = null) {
   };
 }
 
+function openInHouseModal() {
+  let modal = document.getElementById('inHouseModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'inHouseModal';
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); display:flex; justify-content:center; align-items:center; z-index:9999;';
+    document.body.appendChild(modal);
+  }
+
+  const inHouseCount = (state.inHouseGuests || []).length;
+  const dietaryCount = (state.dietarySheet || []).length;
+
+  modal.innerHTML = `
+    <div style="background:#141a23; border:1px solid rgba(255,255,255,0.15); width:90%; max-width:1050px; max-height:85vh; border-radius:12px; display:flex; flex-direction:column; overflow:hidden; color:#fff; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+      
+      <!-- Header with Dual Uploads & Timestamps -->
+      <div style="padding:20px 24px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="margin:0; font-size:18px; font-weight:600;">🏨 Resort Operations Directory</h2>
+          <p style="margin:4px 0 0 0; font-size:13px; color:rgba(255,255,255,0.6);">Manage daily in-house manifests and guest dietary profiles</p>
+        </div>
+        
+        <div style="display:flex; gap:16px; align-items:center;">
+          <!-- In-House Upload -->
+          <div style="text-align:center;">
+            <label style="cursor:pointer; padding:6px 12px; font-size:12px; background:#3b82f6; color:#fff; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
+              📁 Upload In-House List
+              <input type="file" id="dailyListUpload" accept=".json" style="display:none;" />
+            </label>
+            <div style="font-size:10px; color:rgba(255,255,255,0.5); margin-top:3px;">Updated: <span>${state.inHouseUpdated}</span> (${inHouseCount} villas)</div>
+          </div>
+
+          <!-- Dietary Upload -->
+          <div style="text-align:center;">
+            <label style="cursor:pointer; padding:6px 12px; font-size:12px; background:rgba(234,179,8,0.2); color:#facc15; border:1px solid rgba(234,179,8,0.4); border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
+              🥗 Upload Dietary Sheet
+              <input type="file" id="dietaryUpload" accept=".json" style="display:none;" />
+            </label>
+            <div style="font-size:10px; color:rgba(255,255,255,0.5); margin-top:3px;">Updated: <span>${state.dietaryUpdated}</span> (${dietaryCount} records)</div>
+          </div>
+
+          <button id="closeInHouseModal" style="background:transparent; border:none; color:#fff; font-size:22px; cursor:pointer; margin-left:10px;">&times;</button>
+        </div>
+      </div>
+
+      <!-- Content Table -->
+      <div style="padding:20px 24px; overflow-y:auto; flex:1;">
+        ${inHouseCount === 0 ? `
+          <div style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
+            <p style="font-size:15px; margin-bottom:8px;">No in-house guest manifest uploaded yet.</p>
+            <p style="font-size:13px;">Use the buttons above to load today's JSON data files.</p>
+          </div>
+        ` : `
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.15); text-align:left; color:rgba(255,255,255,0.7);">
+                <th style="padding:10px;">Villa</th>
+                <th style="padding:10px;">Guest Name(s)</th>
+                <th style="padding:10px;">Departure</th>
+                <th style="padding:10px;">Meal Plan</th>
+                <th style="padding:10px;">GEM</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${state.inHouseGuests.map(g => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                  <td style="padding:12px 10px; font-weight:600; color:#38bdf8;">Villa ${g.room}</td>
+                  <td style="padding:12px 10px;">${g.guests.map(x => `${x.title || ''} ${x.lastName}`).join(' / ')}</td>
+                  <td style="padding:12px 10px; color:rgba(255,255,255,0.8);">${g.departure}</td>
+                  <td style="padding:12px 10px;"><span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 6px; border-radius:4px; font-size:11px;">${g.mealPlan}</span></td>
+                  <td style="padding:12px 10px; color:#f472b6;">${g.gem}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('closeInHouseModal').onclick = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  document.getElementById('dailyListUpload').onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        const timestamp = new Date().toLocaleString();
+        state.inHouseGuests = data;
+        state.inHouseUpdated = timestamp;
+        localStorage.setItem('manik_inhouse_guests', JSON.stringify(data));
+        localStorage.setItem('manik_inhouse_updated', timestamp);
+        openInHouseModal();
+      } catch (err) { alert('Invalid In-House JSON format.'); }
+    };
+    reader.readAsText(file);
+  };
+
+  document.getElementById('dietaryUpload').onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        const timestamp = new Date().toLocaleString();
+        state.dietarySheet = data;
+        state.dietaryUpdated = timestamp;
+        localStorage.setItem('manik_dietary_sheet', JSON.stringify(data));
+        localStorage.setItem('manik_dietary_updated', timestamp);
+        openInHouseModal();
+      } catch (err) { alert('Invalid Dietary JSON format.'); }
+    };
+    reader.readAsText(file);
+  };
+}
+
 function bindViewEvents() {
   document.querySelectorAll('.outlet-card').forEach(card => {
     card.onclick = () => { state.selectedOutletId = card.dataset.outlet; state.view = 'appointments'; render(); };
@@ -1092,112 +1266,4 @@ function bindViewEvents() {
   document.getElementById('btnNewAppt')?.addEventListener('click', () => openAppointmentModal());
   document.getElementById('btnResvReport')?.addEventListener('click', () => { state.view = 'reports'; render(); });
   document.getElementById('btnPrintReport')?.addEventListener('click', () => window.print());
-  document.getElementById('btnAddOutlet')?.addEventListener('click', () => openOutletModal());
-  
-  const actionMenuBtn = document.getElementById('actionMenuBtn');
-  const actionMenuDropdown = document.getElementById('actionMenuDropdown');
-  if (actionMenuBtn && actionMenuDropdown) {
-    actionMenuBtn.onclick = (e) => {
-      e.stopPropagation();
-      actionMenuDropdown.classList.toggle('hidden');
-    };
-    document.addEventListener('click', () => actionMenuDropdown.classList.add('hidden'));
-    actionMenuDropdown.onclick = (e) => {
-      e.stopPropagation();
-      const item = e.target.closest('.action-dropdown-item');
-      if (!item) return;
-      actionMenuDropdown.classList.add('hidden');
-      const action = item.dataset.action;
-      if (action === 'new-appt') openAppointmentModal();
-      if (action === 'change-date') {
-        const newD = prompt('Enter date (YYYY-MM-DD):', state.selectedDate);
-        if (newD) { 
-          state.selectedDate = newD; 
-          const [y, m] = newD.split('-').map(Number);
-          state.calendarYear = y;
-          state.calendarMonth = m - 1;
-          render(); 
-        }
-      }
-      if (action === 'switch-outlet') {
-        const nextO = state.outlets[(state.outlets.findIndex(o => o.id === state.selectedOutletId) + 1) % state.outlets.length];
-        state.selectedOutletId = nextO.id;
-        render();
-      }
-      if (action === 'resv-report') { state.view = 'reports'; render(); }
-      if (action === 'refresh-guests') { toast('Guests list refreshed'); }
-      if (action === 'update-slots') { openSlotCapacityModal(); }
-      if (action === 'update-dates') { alert('Operating dates configuration'); }
-    };
-  }
-
-  document.querySelectorAll('[data-edit-outlet]').forEach(btn => {
-    btn.onclick = () => openOutletModal(btn.dataset.editOutlet);
-  });
-  document.querySelectorAll('[data-toggle-outlet]').forEach(btn => {
-    btn.onclick = () => {
-      const o = getOutlet(btn.dataset.toggleOutlet);
-      o.active = !o.active;
-      logAudit(o.active ? 'Activated outlet' : 'Deactivated outlet', o.name);
-      toast(`${o.name} ${o.active ? 'activated' : 'deactivated'}`);
-      render();
-    };
-  });
-  const gsSearch = document.getElementById('guestScheduleSearch');
-  if (gsSearch) {
-    gsSearch.oninput = () => {
-      const results = searchOpera(gsSearch.value);
-      const el = document.getElementById('gsSearchResults');
-      if (!results.length) { el.classList.add('hidden'); return; }
-      el.classList.remove('hidden');
-      el.innerHTML = results.map(res => `
-        <div class="search-result-item" data-res="${res.reservationId}">
-          <span class="sr-room">${res.room}</span>
-          <div><div class="sr-name">${res.guests.map(g => `${g.title} ${g.lastName}`).join(', ')}</div>
-          <div class="sr-meta">${res.confirmation}</div></div></div>`).join('');
-      el.querySelectorAll('.search-result-item').forEach(item => {
-        item.onclick = () => {
-          const res = getReservation(item.dataset.res);
-          el.classList.add('hidden');
-          gsSearch.value = `Room ${res.room}`;
-          showGuestItinerary(res);
-        };
-      });
-    };
-  }
-}
-
-function showGuestItinerary(res) {
-  const guestAppts = state.appointments
-    .filter(a => a.reservationId === res.reservationId)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  const resultEl = document.getElementById('guestScheduleResult');
-  if (!guestAppts.length) {
-    resultEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🗓</div>
-      <h3>No appointments yet</h3><p>Room ${res.room} has no bookings across outlets.</p></div>`;
-    return;
-  }
-  resultEl.innerHTML = `
-    <div style="text-align:left;background:white;border:1px solid var(--sand-200);border-radius:12px;padding:20px;">
-      <h3 style="margin-bottom:4px">${res.guests.map(g => `${g.title} ${g.firstName} ${g.lastName}`).join(' & ')}</h3>
-      <p style="color:var(--ink-400);font-size:13.5px;margin-bottom:16px">
-        Room ${res.room} · ${res.confirmation} · GEM ${res.butler} · ${formatShortDate(res.arrival)} → ${formatShortDate(res.departure)}</p>
-      ${guestAppts.map(a => {
-        const o = getOutlet(a.outletId);
-        const allergies = detectAllergies(a.comments);
-        
-        let allergyTagsHtml = '';
-        if (allergies.length) {
-          allergyTagsHtml = `<div class="allergy-tags" style="margin-top:4px">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>`;
-        }
-
-        return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--sand-100)">
-          <div style="min-width:90px;font-weight:600;color:var(--sage-700)">${formatTime(a.time)}</div>
-          <div><strong>${o?.name || a.outletId}</strong>${a.mealPlan ? ` · ${a.mealPlan}` : ''}
-            <div style="font-size:12.5px;color:var(--ink-400)">${appointmentTypes.find(t => t.id === a.type)?.name} · ${a.pax} pax</div>
-            ${allergyTagsHtml}
-          </div></div>`;
-      }).join('')}</div>`;
-}
-
-renderLogin();
+  document.
