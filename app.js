@@ -26,6 +26,15 @@ const customOutlets = [
   { id: 'events', name: 'Events', short: 'Events', type: 'Experience', iconClass: 'events', icon: 'E', operatingPeriods: [{ name: 'Special', start: '18:00', end: '23:00', maxPax: 60 }], active: true }
 ];
 
+function safeParseJSON(key, fallback) {
+  try {
+    const val = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(val) ? val : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 const state = {
   loggedIn: false,
   user: null,
@@ -36,8 +45,8 @@ const state = {
   selectedOutletId: 'bottega',
   appointments: JSON.parse(JSON.stringify(sampleAppointments)),
   outlets: customOutlets,
-  inHouseGuests: JSON.parse(localStorage.getItem('manik_inhouse_guests') || '[]'),
-  dietarySheet: JSON.parse(localStorage.getItem('manik_dietary_sheet') || '[]'),
+  inHouseGuests: safeParseJSON('manik_inhouse_guests', []),
+  dietarySheet: safeParseJSON('manik_dietary_sheet', []),
   inHouseUpdated: localStorage.getItem('manik_inhouse_updated') || 'Never',
   dietaryUpdated: localStorage.getItem('manik_dietary_updated') || 'Never',
   auditLog: [
@@ -891,10 +900,11 @@ function openAppointmentModal(apptId = null) {
 
   function searchProfiles(q) {
     const query = q.toLowerCase();
-    const inHouseMatches = (state.inHouseGuests || []).filter(item => 
+    const inHouseList = Array.isArray(state.inHouseGuests) ? state.inHouseGuests : [];
+    const inHouseMatches = inHouseList.filter(item => 
       String(item.room).toLowerCase() === query || 
       String(item.room).toLowerCase().includes(query) ||
-      item.guests.some(g => g.lastName.toLowerCase().includes(query))
+      (item.guests && item.guests.some(g => g.lastName.toLowerCase().includes(query)))
     );
     
     if (inHouseMatches.length > 0) {
@@ -908,12 +918,12 @@ function openAppointmentModal(apptId = null) {
         departure: ih.departure,
         adults: ih.adults,
         children: ih.children || 0,
-        guests: ih.guests.map(g => ({
+        guests: ih.guests ? ih.guests.map(g => ({
           title: g.title || '',
           firstName: g.firstName || '',
           lastName: g.lastName || '',
           nationality: g.nationality || 'GB'
-        }))
+        })) : [{ title: '', firstName: '', lastName: ih.name || 'Guest', nationality: 'GB' }]
       }));
     }
     return searchOpera(q);
@@ -947,7 +957,7 @@ function openAppointmentModal(apptId = null) {
 
     resultsEl.querySelectorAll('[data-res]').forEach(item => {
       item.onclick = () => {
-        const matchedInHouse = (state.inHouseGuests || []).find(ih => 'ih_' + ih.room + '_' === item.dataset.res.slice(0, item.dataset.res.lastIndexOf('_') + 1));
+        const matchedInHouse = (Array.isArray(state.inHouseGuests) ? state.inHouseGuests : []).find(ih => 'ih_' + ih.room + '_' === item.dataset.res.slice(0, item.dataset.res.lastIndexOf('_') + 1));
         const res = matchedInHouse ? results.find(r => r.reservationId === item.dataset.res) : getReservation(item.dataset.res);
         
         selectedReservation = res;
@@ -957,7 +967,8 @@ function openAppointmentModal(apptId = null) {
           document.getElementById('apptMealPlan').value = res.billing;
         }
 
-        const dietaryRecord = (state.dietarySheet || []).find(d => String(d.room) === String(res.room));
+        const dietaryList = Array.isArray(state.dietarySheet) ? state.dietarySheet : [];
+        const dietaryRecord = dietaryList.find(d => String(d.room) === String(res.room));
         const remarksField = document.getElementById('apptComments');
         if (dietaryRecord && dietaryRecord.allergies) {
           remarksField.value = '⚠️ Allergies / Preferences: ' + dietaryRecord.allergies;
@@ -1134,10 +1145,12 @@ function openInHouseModal() {
     document.body.appendChild(modal);
   }
 
-  const inHouseCount = (state.inHouseGuests || []).length;
-  const dietaryCount = (state.dietarySheet || []).length;
+  const inHouseList = Array.isArray(state.inHouseGuests) ? state.inHouseGuests : [];
+  const dietaryList = Array.isArray(state.dietarySheet) ? state.dietarySheet : [];
+  const inHouseCount = inHouseList.length;
+  const dietaryCount = dietaryList.length;
 
-  const inHouseRows = (state.inHouseGuests || []).map(g => {
+  const inHouseRows = inHouseList.map(g => {
     const guestNames = g.guests ? g.guests.map(x => (x.title ? x.title + ' ' : '') + x.lastName).join(' / ') : (g.name || '');
     return '<tr style="border-bottom:1px solid rgba(255,255,255,0.06);">' +
       '<td style="padding:12px 10px; font-weight:600; color:#38bdf8;">Villa ' + g.room + '</td>' +
@@ -1238,6 +1251,7 @@ function openInHouseModal() {
           });
         } else {
           data = JSON.parse(text);
+          if (!Array.isArray(data)) data = [data];
         }
         const timestamp = new Date().toLocaleString();
         state.inHouseGuests = data;
@@ -1266,6 +1280,7 @@ function openInHouseModal() {
           }));
         } else {
           data = JSON.parse(text);
+          if (!Array.isArray(data)) data = [data];
         }
         const timestamp = new Date().toLocaleString();
         state.dietarySheet = data;
