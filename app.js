@@ -112,6 +112,22 @@ function logAudit(action, detail) {
 }
 function canAdmin() { return state.user?.role === 'admin' || state.user?.role === 'gem'; }
 
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length === 0) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const currentLine = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(val => val.trim().replace(/^["']|["']$/g, ''));
+    const obj = {};
+    headers.forEach((h, index) => {
+      obj[h] = currentLine[index] || '';
+    });
+    result.push(obj);
+  }
+  return result;
+}
+
 function renderLogin() {
   document.getElementById('app').innerHTML = `
     <div class="login-screen">
@@ -1122,13 +1138,13 @@ function openInHouseModal() {
   const dietaryCount = (state.dietarySheet || []).length;
 
   const inHouseRows = (state.inHouseGuests || []).map(g => {
-    const guestNames = g.guests.map(x => (x.title ? x.title + ' ' : '') + x.lastName).join(' / ');
+    const guestNames = g.guests ? g.guests.map(x => (x.title ? x.title + ' ' : '') + x.lastName).join(' / ') : (g.name || '');
     return '<tr style="border-bottom:1px solid rgba(255,255,255,0.06);">' +
       '<td style="padding:12px 10px; font-weight:600; color:#38bdf8;">Villa ' + g.room + '</td>' +
       '<td style="padding:12px 10px;">' + guestNames + '</td>' +
-      '<td style="padding:12px 10px; color:rgba(255,255,255,0.8);">' + g.departure + '</td>' +
-      '<td style="padding:12px 10px;"><span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 6px; border-radius:4px; font-size:11px;">' + g.mealPlan + '</span></td>' +
-      '<td style="padding:12px 10px; color:#f472b6;">' + g.gem + '</td>' +
+      '<td style="padding:12px 10px; color:rgba(255,255,255,0.8);">' + (g.departure || '—') + '</td>' +
+      '<td style="padding:12px 10px;"><span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 6px; border-radius:4px; font-size:11px;">' + (g.mealPlan || 'HB') + '</span></td>' +
+      '<td style="padding:12px 10px; color:#f472b6;">' + (g.gem || '—') + '</td>' +
     '</tr>';
   }).join('');
 
@@ -1146,8 +1162,8 @@ function openInHouseModal() {
           <!-- In-House Upload -->
           <div style="text-align:center;">
             <label style="cursor:pointer; padding:6px 12px; font-size:12px; background:#3b82f6; color:#fff; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
-              📁 Upload In-House List
-              <input type="file" id="dailyListUpload" accept=".json" style="display:none;" />
+              📁 Upload In-House List (JSON/CSV)
+              <input type="file" id="dailyListUpload" accept=".json,.csv" style="display:none;" />
             </label>
             <div style="font-size:10px; color:rgba(255,255,255,0.5); margin-top:3px;">Updated: <span>${state.inHouseUpdated}</span> (${inHouseCount} villas)</div>
           </div>
@@ -1155,8 +1171,8 @@ function openInHouseModal() {
           <!-- Dietary Upload -->
           <div style="text-align:center;">
             <label style="cursor:pointer; padding:6px 12px; font-size:12px; background:rgba(234,179,8,0.2); color:#facc15; border:1px solid rgba(234,179,8,0.4); border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
-              🥗 Upload Dietary Sheet
-              <input type="file" id="dietaryUpload" accept=".json" style="display:none;" />
+              🥗 Upload Dietary Sheet (JSON/CSV)
+              <input type="file" id="dietaryUpload" accept=".json,.csv" style="display:none;" />
             </label>
             <div style="font-size:10px; color:rgba(255,255,255,0.5); margin-top:3px;">Updated: <span>${state.dietaryUpdated}</span> (${dietaryCount} records)</div>
           </div>
@@ -1170,7 +1186,7 @@ function openInHouseModal() {
         ${inHouseCount === 0 ? `
           <div style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
             <p style="font-size:15px; margin-bottom:8px;">No in-house guest manifest uploaded yet.</p>
-            <p style="font-size:13px;">Use the buttons above to load today's JSON data files.</p>
+            <p style="font-size:13px;">Use the buttons above to load today's JSON or CSV data files.</p>
           </div>
         ` : `
           <table style="width:100%; border-collapse:collapse; font-size:13px;">
@@ -1201,14 +1217,35 @@ function openInHouseModal() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const data = JSON.parse(event.target.result);
+        const text = event.target.result;
+        let data = [];
+        if (file.name.endsWith('.csv')) {
+          const rawRows = parseCSV(text);
+          data = rawRows.map(row => {
+            const fullName = row.guestname || row.name || row.guest || '';
+            const parts = fullName.split(' ');
+            const lastName = parts.pop() || '';
+            const firstName = parts.join(' ') || '';
+            return {
+              room: row.room || row.villa || '',
+              guests: [{ title: row.title || 'Mr', firstName: firstName, lastName: lastName, nationality: row.nationality || 'GB' }],
+              departure: row.departure || row.dep || '2026-10-30',
+              mealPlan: row.mealplan || row.mp || 'HB',
+              gem: row.gem || row.butler || 'Aisha',
+              adults: parseInt(row.adults) || 2,
+              children: parseInt(row.children) || 0
+            };
+          });
+        } else {
+          data = JSON.parse(text);
+        }
         const timestamp = new Date().toLocaleString();
         state.inHouseGuests = data;
         state.inHouseUpdated = timestamp;
         localStorage.setItem('manik_inhouse_guests', JSON.stringify(data));
         localStorage.setItem('manik_inhouse_updated', timestamp);
         openInHouseModal();
-      } catch (err) { alert('Invalid In-House JSON format.'); }
+      } catch (err) { alert('Invalid In-House file format.'); }
     };
     reader.readAsText(file);
   };
@@ -1219,14 +1256,24 @@ function openInHouseModal() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const data = JSON.parse(event.target.result);
+        const text = event.target.result;
+        let data = [];
+        if (file.name.endsWith('.csv')) {
+          const rawRows = parseCSV(text);
+          data = rawRows.map(row => ({
+            room: row.room || row.villa || '',
+            allergies: row.allergies || row.dietary || row.notes || ''
+          }));
+        } else {
+          data = JSON.parse(text);
+        }
         const timestamp = new Date().toLocaleString();
         state.dietarySheet = data;
         state.dietaryUpdated = timestamp;
         localStorage.setItem('manik_dietary_sheet', JSON.stringify(data));
         localStorage.setItem('manik_dietary_updated', timestamp);
         openInHouseModal();
-      } catch (err) { alert('Invalid Dietary JSON format.'); }
+      } catch (err) { alert('Invalid Dietary file format.'); }
     };
     reader.readAsText(file);
   };
