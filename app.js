@@ -23,7 +23,7 @@ const state = {
   view: 'dashboard',
   selectedDate: '2026-10-25',
   calendarYear: 2026,
-  calendarMonth: 9,
+  calendarMonth: 9, // 0-indexed (9 = October)
   selectedOutletId: 'bottega',
   appointments: JSON.parse(JSON.stringify(sampleAppointments)),
   outlets: JSON.parse(JSON.stringify(seedOutlets)),
@@ -33,6 +33,15 @@ const state = {
     { time: '2026-10-25 10:02', user: 'Aisha Hassan', action: 'Updated notes', detail: 'Room 125 allergy note' },
   ]
 };
+
+const mealPlans = [
+  { id: 'HB', name: 'HB' },
+  { id: 'FB', name: 'FB' },
+  { id: 'BB', name: 'BB' },
+  { id: 'FBSA', name: 'FBSA' },
+  { id: 'FBSI', name: 'FBSI' },
+  { id: 'HB/FB', name: 'HB/FB' }
+];
 
 function formatDate(iso) {
   const d = new Date(iso + 'T12:00:00');
@@ -254,11 +263,11 @@ function renderAppointments() {
     const used = slotAppts.reduce((s, a) => s + a.pax, 0);
     const cards = slotAppts.map(a => {
       const primary = a.guestIds[0] ? getGuestById(a.guestIds[0]) : null;
-      const name = primary ? `${primary.title} ${primary.lastName}` : 'Guest';
+      const name = primary ? `${primary.title} ${primary.lastName}` : (a.customGuestName || 'Guest');
       const more = a.guestIds.length > 1 ? `+${a.guestIds.length - 1}` : '';
       const allergies = detectAllergies(a.comments);
       return `<div class="guest-card ${allergies.length ? 'has-allergy' : ''}" data-appt="${a.id}">
-        <div class="gc-room">${a.table ? 'T' + a.table + ' · ' : ''}${a.room}</div>
+        <div class="gc-room">${a.room || 'Ext'}${a.mealPlan ? ' · ' + a.mealPlan : ''}</div>
         <div class="gc-name">${name}</div>
         <div class="gc-meta"><span>${appointmentTypes.find(t => t.id === a.type)?.name || a.type}</span>
         ${more ? `<span>${more}</span>` : ''}</div>
@@ -320,31 +329,46 @@ function renderReports() {
   appts.forEach(a => {
     const res = getReservation(a.reservationId);
     if (res) { totalAdults += res.adults; totalChildren += res.children; }
+    else if (a.isCustom) { totalAdults += a.pax; }
   });
   const summary = daySummary(outlet.name, appts, getReservation);
   let rows = '';
   Object.keys(byTime).sort().forEach(time => {
     const group = byTime[time];
     let ga = 0, gc = 0;
-    group.forEach(a => { const res = getReservation(a.reservationId); if (res) { ga += res.adults; gc += res.children; } });
-    rows += `<tr class="slot-header"><td colspan="9">${formatTime(time)} · Adults: ${ga} · Children: ${gc}</td></tr>`;
     group.forEach(a => {
       const res = getReservation(a.reservationId);
-      if (!res) return;
+      if (res) { ga += res.adults; gc += res.children; }
+      else if (a.isCustom) { ga += a.pax; }
+    });
+    rows += `<tr class="slot-header"><td colspan="8">${formatTime(time)} · Adults: ${ga} · Children: ${gc}</td></tr>`;
+    group.forEach(a => {
+      const res = getReservation(a.reservationId);
       const allergies = detectAllergies(a.comments);
-      res.guests.forEach((g, idx) => {
+      const mp = a.mealPlan || (res ? res.billing : 'HB');
+      if (res) {
+        res.guests.forEach((g, idx) => {
+          rows += `<tr>
+            <td>${res.room}</td><td>${g.title} ${g.firstName} ${g.lastName}</td>
+            <td>${idx === 0 ? (res.butler || '') : ''}</td>
+            <td>${idx === 0 ? formatShortDate(res.arrival) : ''}</td>
+            <td>${idx === 0 ? formatShortDate(res.departure) : ''}</td>
+            <td>${idx === 0 ? mp : ''}</td>
+            <td>${idx === 0 ? `${res.adults}A${res.children ? ' + ' + res.children + 'C' : ''}` : ''}</td>
+            <td class="allergy-note">${idx === 0 ? (a.comments || '') : ''}
+              ${idx === 0 && allergies.length ? `<div class="allergy-tags">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>` : ''}
+            </td></tr>`;
+        });
+      } else if (a.isCustom) {
         rows += `<tr>
-          <td>${idx === 0 && a.table ? a.table : ''}</td><td>${res.room}</td>
-          <td>${g.title} ${g.firstName} ${g.lastName}</td>
-          <td>${idx === 0 ? (res.butler || '') : ''}</td>
-          <td>${idx === 0 ? formatShortDate(res.arrival) : ''}</td>
-          <td>${idx === 0 ? formatShortDate(res.departure) : ''}</td>
-          <td>${idx === 0 ? res.billing : ''}</td>
-          <td>${idx === 0 ? `${res.adults}A${res.children ? ' + ' + res.children + 'C' : ''}` : ''}</td>
-          <td class="allergy-note">${idx === 0 ? (a.comments || '') : ''}
-            ${idx === 0 && allergies.length ? `<div class="allergy-tags">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>` : ''}
+          <td>${a.room || 'Ext'}</td>
+          <td><strong>${a.customGuestName}</strong> (Custom Guest)</td>
+          <td>—</td><td>—</td><td>—</td><td>${mp}</td>
+          <td>${a.pax}A</td>
+          <td class="allergy-note">${a.comments || ''}
+            ${allergies.length ? `<div class="allergy-tags">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>` : ''}
           </td></tr>`;
-      });
+      }
     });
   });
   return `<div class="view-header"><div>
@@ -354,10 +378,10 @@ function renderReports() {
     <div class="ai-banner"><div class="ai-icon">AI</div><div>${summary}</div></div>
     <div style="background:white;border:1px solid var(--sand-200);border-radius:12px;overflow:hidden;">
       <table class="report-table"><thead><tr>
-        <th>Table</th><th>Room</th><th>Name</th><th>Butler</th>
-        <th>Arrival</th><th>Departure</th><th>Billing</th><th>Pax</th><th>Notes</th>
+        <th>Room</th><th>Name</th><th>Butler</th>
+        <th>Arrival</th><th>Departure</th><th>Meal Plan</th><th>Pax</th><th>Notes</th>
       </tr></thead>
-      <tbody>${rows || '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--ink-400)">No reservations</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ink-400)">No reservations</td></tr>'}</tbody>
       </table></div>`;
 }
 
@@ -549,9 +573,13 @@ function openAppointmentModal(apptId = null) {
   
   let selectedGuests = [];
   let selectedReservation = null;
-  if (appt) {
+  let customGuest = appt?.isCustom ? { name: appt.customGuestName, room: appt.room || 'Ext', pax: appt.pax } : null;
+  let currentMealPlan = appt?.mealPlan || 'HB';
+
+  if (appt && !appt.isCustom) {
     selectedReservation = getReservation(appt.reservationId);
     selectedGuests = appt.guestIds.map(id => getGuestById(id)).filter(Boolean);
+    if (selectedReservation) currentMealPlan = selectedReservation.billing;
   }
   const slotCovers = {};
   slots.forEach(t => {
@@ -567,11 +595,27 @@ function openAppointmentModal(apptId = null) {
         <button class="modal-close" id="modalClose">×</button></div>
       <div class="modal-body">
         <div class="form-group relative">
-          <label>Search for Profiles (Room / Confirmation) — Mock Opera</label>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label style="margin-bottom:0;">Search for Profiles (Room / Confirmation) — Mock Opera</label>
+            <button class="btn btn-secondary" id="btnAddCustomGuest" style="padding:2px 8px; font-size:11.5px;">+ Add Custom Guest</button>
+          </div>
           <input type="text" id="profileSearch" placeholder="Room number or confirmation…" autocomplete="off" />
-          <div class="form-hint">Try: 222, 118, 210, SSK-77102</div>
+          <div class="form-hint">Try: 222, 118, 210, SSK-77102 or click Add Custom Guest</div>
           <div id="profileResults" class="search-results hidden"></div>
         </div>
+
+        <div id="customGuestFormContainer" class="hidden" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:12px; margin-bottom:14px;">
+          <h3 style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--accent,#38bdf8);">Add Non-Opera / Custom Guest</h3>
+          <div class="form-row" style="grid-template-columns:2fr 1fr 1fr; margin-bottom:8px;">
+            <input type="text" id="cgName" placeholder="Guest Full Name" style="background:rgba(255,255,255,0.05); border:1px solid var(--sand-200); color:#fff; padding:6px 10px; border-radius:4px; font-size:13px;" value="${customGuest?.name || ''}" />
+            <input type="text" id="cgRoom" placeholder="Room/Ext" style="background:rgba(255,255,255,0.05); border:1px solid var(--sand-200); color:#fff; padding:6px 10px; border-radius:4px; font-size:13px;" value="${customGuest?.room || 'Ext'}" />
+            <input type="number" id="cgPax" placeholder="Pax" min="1" max="20" style="background:rgba(255,255,255,0.05); border:1px solid var(--sand-200); color:#fff; padding:6px 10px; border-radius:4px; font-size:13px;" value="${customGuest?.pax || 2}" />
+          </div>
+          <div style="text-align:right;">
+            <button class="btn btn-primary" id="cgSaveBtn" style="padding:4px 12px; font-size:12px;">Save Custom Guest</button>
+          </div>
+        </div>
+
         <div class="form-row">
           <div class="form-group"><label>Outlet</label>
             <select id="apptOutlet">${state.outlets.filter(o => o.active).map(o =>
@@ -588,12 +632,16 @@ function openAppointmentModal(apptId = null) {
             <select id="apptType">${appointmentTypes.map(t =>
               `<option value="${t.id}" ${appt?.type === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select></div>
         </div>
+
         <div class="form-row" style="grid-template-columns:1fr 2fr">
-          <div class="form-group"><label>Table #</label>
-            <input type="text" id="apptTable" class="table-input" value="${appt?.table || ''}" placeholder="—" /></div>
+          <div class="form-group"><label>Meal Plan</label>
+            <select id="apptMealPlan">
+              ${mealPlans.map(mp => `<option value="${mp.id}" ${currentMealPlan === mp.id ? 'selected' : ''}>${mp.name}</option>`).join('')}
+            </select></div>
           <div class="form-group"><label>AI suggested slots</label>
             <div class="suggest-chips" id="suggestChips"><span style="color:var(--ink-400);font-size:12px">Select guests first</span></div></div>
         </div>
+
         <div id="conflictWarning" class="ai-banner critical hidden" style="margin-bottom:12px"></div>
         <div class="form-group"><label>Guests</label><div class="guest-chips" id="guestChips"></div></div>
         <div class="form-group"><label>Comments / Allergies</label>
@@ -608,23 +656,44 @@ function openAppointmentModal(apptId = null) {
 
   function renderChips() {
     const el = document.getElementById('guestChips');
-    if (!selectedGuests.length) {
+    if (!selectedGuests.length && !customGuest) {
       el.innerHTML = '<span style="color:var(--ink-400);font-size:13px">No guests selected yet</span>';
       updateSuggestions(); return;
     }
-    el.innerHTML = selectedGuests.map(g => `
+    let html = '';
+    if (customGuest) {
+      html += `
+        <div class="guest-chip" style="border-color:var(--accent,#38bdf8)">
+          <div class="chip-avatar" style="background:#0284c7">CG</div>
+          <div class="chip-info"><strong>${customGuest.name}</strong>
+          <span>Custom Guest · Room ${customGuest.room} · ${customGuest.pax} Pax</span></div>
+          <button class="chip-remove" id="removeCustomGuest">Remove</button>
+        </div>`;
+    }
+    html += selectedGuests.map(g => `
       <div class="guest-chip"><div class="chip-avatar">${(g.firstName[0]+g.lastName[0]).toUpperCase()}</div>
         <div class="chip-info"><strong>${g.title} ${g.firstName} ${g.lastName}</strong>
         <span>Room ${g.room} · ${g.billing || ''}</span></div>
         <button class="chip-remove" data-remove="${g.id}">Remove</button></div>`).join('');
+    
+    el.innerHTML = html;
+    
+    if (customGuest) {
+      document.getElementById('removeCustomGuest').onclick = () => {
+        customGuest = null;
+        renderChips();
+      };
+    }
     el.querySelectorAll('[data-remove]').forEach(btn => {
       btn.onclick = () => { selectedGuests = selectedGuests.filter(g => g.id !== btn.dataset.remove); renderChips(); };
     });
     updateSuggestions(); checkConflicts();
   }
+
   function updateSuggestions() {
     const el = document.getElementById('suggestChips');
-    if (!selectedGuests.length) {
+    const totalPax = customGuest ? customGuest.pax : selectedGuests.length;
+    if (!totalPax) {
       el.innerHTML = '<span style="color:var(--ink-400);font-size:12px">Select guests first</span>'; return;
     }
     const dynamicPerSlot = (t) => {
@@ -634,7 +703,7 @@ function openAppointmentModal(apptId = null) {
     const suggestions = slots.map(t => ({
       time: t,
       remaining: dynamicPerSlot(t) - (slotCovers[t] || 0)
-    })).filter(s => s.remaining >= selectedGuests.length).slice(0, 3);
+    })).filter(s => s.remaining >= totalPax).slice(0, 3);
 
     if (!suggestions.length) {
       el.innerHTML = '<span style="color:var(--coral-500);font-size:12px">No slots fit this party size</span>'; return;
@@ -645,6 +714,7 @@ function openAppointmentModal(apptId = null) {
       btn.onclick = () => { document.getElementById('apptTime').value = btn.dataset.suggest; };
     });
   }
+
   function checkConflicts() {
     const warn = document.getElementById('conflictWarning');
     if (!selectedReservation) { warn.classList.add('hidden'); return; }
@@ -654,12 +724,32 @@ function openAppointmentModal(apptId = null) {
     warn.innerHTML = `<div class="ai-icon">!</div><div><strong>Possible conflict</strong><br>This guest already has ${conflicts.length} booking(s) today: ${
       conflicts.map(c => `${getOutlet(c.outletId)?.name} at ${formatTime(c.time)}`).join(', ')}</div>`;
   }
+
   function updateAllergyPreview() {
     const tags = detectAllergies(document.getElementById('apptComments').value);
     document.getElementById('allergyPreview').innerHTML = tags.map(t => `<span class="allergy-tag">${t}</span>`).join('');
   }
+
   renderChips(); updateAllergyPreview();
   document.getElementById('apptComments').oninput = updateAllergyPreview;
+
+  document.getElementById('btnAddCustomGuest').onclick = () => {
+    const formContainer = document.getElementById('customGuestFormContainer');
+    formContainer.classList.toggle('hidden');
+  };
+
+  document.getElementById('cgSaveBtn').onclick = () => {
+    const name = document.getElementById('cgName').value.trim();
+    const room = document.getElementById('cgRoom').value.trim() || 'Ext';
+    const pax = parseInt(document.getElementById('cgPax').value) || 2;
+    if (!name) { alert('Please enter guest name'); return; }
+    customGuest = { name, room, pax };
+    selectedReservation = null;
+    selectedGuests = [];
+    document.getElementById('profileSearch').value = `Custom: ${name}`;
+    document.getElementById('customGuestFormContainer').classList.add('hidden');
+    renderChips();
+  };
 
   const searchInput = document.getElementById('profileSearch');
   const resultsEl = document.getElementById('profileResults');
@@ -678,6 +768,10 @@ function openAppointmentModal(apptId = null) {
         const res = getReservation(item.dataset.res);
         selectedReservation = res;
         selectedGuests = res.guests.map(g => ({ ...g, room: res.room, billing: res.billing }));
+        customGuest = null;
+        if (res.billing) {
+          document.getElementById('apptMealPlan').value = res.billing;
+        }
         if (res.notes) { document.getElementById('apptComments').value = res.notes; updateAllergyPreview(); }
         searchInput.value = `Room ${res.room}`;
         resultsEl.classList.add('hidden');
@@ -695,37 +789,57 @@ function openAppointmentModal(apptId = null) {
     const outletId = document.getElementById('apptOutlet').value;
     const time = document.getElementById('apptTime').value;
     const type = document.getElementById('apptType').value;
-    const table = document.getElementById('apptTable').value.trim();
+    const mealPlan = document.getElementById('apptMealPlan').value;
     const comments = document.getElementById('apptComments').value.trim();
-    if (!selectedReservation || !selectedGuests.length) { alert('Select a guest first'); return; }
+    
+    if (!selectedReservation && !selectedGuests.length && !customGuest) { alert('Select or add a guest first'); return; }
     if (!time) { alert('Select a time slot'); return; }
+
     if (isEdit) {
       const idx = state.appointments.findIndex(a => a.id === apptId);
-      state.appointments[idx] = {
-        ...state.appointments[idx], outletId, time, type, table, comments,
-        reservationId: selectedReservation.reservationId, room: selectedReservation.room,
-        guestIds: selectedGuests.map(g => g.id), pax: selectedGuests.length
-      };
-      logAudit('Updated appointment', `Room ${selectedReservation.room} → ${getOutlet(outletId).name} ${time}`);
+      if (customGuest) {
+        state.appointments[idx] = {
+          ...state.appointments[idx], outletId, time, type, mealPlan, comments,
+          isCustom: true, customGuestName: customGuest.name, room: customGuest.room,
+          guestIds: [], pax: customGuest.pax, reservationId: null
+        };
+      } else {
+        state.appointments[idx] = {
+          ...state.appointments[idx], outletId, time, type, mealPlan, comments,
+          isCustom: false, customGuestName: null,
+          reservationId: selectedReservation.reservationId, room: selectedReservation.room,
+          guestIds: selectedGuests.map(g => g.id), pax: selectedGuests.length
+        };
+      }
+      logAudit('Updated appointment', `→ ${getOutlet(outletId).name} ${time}`);
       toast('Appointment updated');
     } else {
-      state.appointments.push({
-        id: 'a' + Date.now(), outletId, date: state.selectedDate, time, type, table,
-        reservationId: selectedReservation.reservationId, room: selectedReservation.room,
-        guestIds: selectedGuests.map(g => g.id), pax: selectedGuests.length, comments,
-        createdBy: state.user.name
-      });
-      logAudit('Created appointment', `Room ${selectedReservation.room} → ${getOutlet(outletId).name} ${time}`);
+      if (customGuest) {
+        state.appointments.push({
+          id: 'a' + Date.now(), outletId, date: state.selectedDate, time, type, mealPlan,
+          isCustom: true, customGuestName: customGuest.name, room: customGuest.room,
+          guestIds: [], pax: customGuest.pax, comments, createdBy: state.user.name
+        });
+      } else {
+        state.appointments.push({
+          id: 'a' + Date.now(), outletId, date: state.selectedDate, time, type, mealPlan,
+          reservationId: selectedReservation.reservationId, room: selectedReservation.room,
+          guestIds: selectedGuests.map(g => g.id), pax: selectedGuests.length, comments,
+          createdBy: state.user.name
+        });
+      }
+      logAudit('Created appointment', `→ ${getOutlet(outletId).name} ${time}`);
       toast('Appointment created');
     }
     close(); render();
   };
+
   if (isEdit) {
     document.getElementById('modalDelete').onclick = () => {
       if (confirm('Delete this appointment?')) {
         const a = state.appointments.find(x => x.id === apptId);
         state.appointments = state.appointments.filter(x => x.id !== apptId);
-        logAudit('Deleted appointment', `Room ${a?.room} from ${getOutlet(a?.outletId)?.name}`);
+        logAudit('Deleted appointment', `from ${getOutlet(a?.outletId)?.name}`);
         toast('Appointment deleted'); close(); render();
       }
     };
@@ -930,7 +1044,7 @@ function showGuestItinerary(res) {
         const allergies = detectAllergies(a.comments);
         return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--sand-100)">
           <div style="min-width:90px;font-weight:600;color:var(--sage-700)">${formatTime(a.time)}</div>
-          <div><strong>${o?.name || a.outletId}</strong>${a.table ? ` · Table ${a.table}` : ''}
+          <div><strong>${o?.name || a.outletId}</strong>${a.mealPlan ? ` · ${a.mealPlan}` : ''}
             <div style="font-size:12.5px;color:var(--ink-400)">${appointmentTypes.find(t => t.id === a.type)?.name} · ${a.pax} pax</div>
             ${allergies.length ? `<div class="allergy-tags" style="margin-top:4px">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>` : ''}
           </div></div>`;
