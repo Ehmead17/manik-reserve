@@ -1084,3 +1084,77 @@ function bindViewEvents() {
       if (action === 'resv-report') { state.view = 'reports'; render(); }
       if (action === 'refresh-guests') { toast('Guests list refreshed'); }
       if (action === 'update-slots') { openSlotCapacityModal(); }
+      if (action === 'update-dates') { alert('Operating dates configuration'); }
+    };
+  }
+
+  document.querySelectorAll('[data-edit-outlet]').forEach(btn => {
+    btn.onclick = () => openOutletModal(btn.dataset.editOutlet);
+  });
+  document.querySelectorAll('[data-toggle-outlet]').forEach(btn => {
+    btn.onclick = () => {
+      const o = getOutlet(btn.dataset.toggleOutlet);
+      o.active = !o.active;
+      logAudit(o.active ? 'Activated outlet' : 'Deactivated outlet', o.name);
+      toast(`${o.name} ${o.active ? 'activated' : 'deactivated'}`);
+      render();
+    };
+  });
+  const gsSearch = document.getElementById('guestScheduleSearch');
+  if (gsSearch) {
+    gsSearch.oninput = () => {
+      const results = searchOpera(gsSearch.value);
+      const el = document.getElementById('gsSearchResults');
+      if (!results.length) { el.classList.add('hidden'); return; }
+      el.classList.remove('hidden');
+      el.innerHTML = results.map(res => `
+        <div class="search-result-item" data-res="${res.reservationId}">
+          <span class="sr-room">${res.room}</span>
+          <div><div class="sr-name">${res.guests.map(g => `${g.title} ${g.lastName}`).join(', ')}</div>
+          <div class="sr-meta">${res.confirmation}</div></div></div>`).join('');
+      el.querySelectorAll('.search-result-item').forEach(item => {
+        item.onclick = () => {
+          const res = getReservation(item.dataset.res);
+          el.classList.add('hidden');
+          gsSearch.value = `Room ${res.room}`;
+          showGuestItinerary(res);
+        };
+      });
+    };
+  }
+}
+
+function showGuestItinerary(res) {
+  const guestAppts = state.appointments
+    .filter(a => a.reservationId === res.reservationId)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  const resultEl = document.getElementById('guestScheduleResult');
+  if (!guestAppts.length) {
+    resultEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🗓</div>
+      <h3>No appointments yet</h3><p>Room ${res.room} has no bookings across outlets.</p></div>`;
+    return;
+  }
+  resultEl.innerHTML = `
+    <div style="text-align:left;background:white;border:1px solid var(--sand-200);border-radius:12px;padding:20px;">
+      <h3 style="margin-bottom:4px">${res.guests.map(g => `${g.title} ${g.firstName} ${g.lastName}`).join(' & ')}</h3>
+      <p style="color:var(--ink-400);font-size:13.5px;margin-bottom:16px">
+        Room ${res.room} · ${res.confirmation} · Butler ${res.butler} · ${formatShortDate(res.arrival)} → ${formatShortDate(res.departure)}</p>
+      ${guestAppts.map(a => {
+        const o = getOutlet(a.outletId);
+        const allergies = detectAllergies(a.comments);
+        
+        let allergyTagsHtml = '';
+        if (allergies.length) {
+          allergyTagsHtml = `<div class="allergy-tags" style="margin-top:4px">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>`;
+        }
+
+        return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--sand-100)">
+          <div style="min-width:90px;font-weight:600;color:var(--sage-700)">${formatTime(a.time)}</div>
+          <div><strong>${o?.name || a.outletId}</strong>${a.mealPlan ? ` · ${a.mealPlan}` : ''}
+            <div style="font-size:12.5px;color:var(--ink-400)">${appointmentTypes.find(t => t.id === a.type)?.name} · ${a.pax} pax</div>
+            ${allergyTagsHtml}
+          </div></div>`;
+      }).join('')}</div>`;
+}
+
+renderLogin();
