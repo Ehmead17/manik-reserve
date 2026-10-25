@@ -1059,4 +1059,55 @@ function bindViewEvents() {
     card.onclick = () => { state.selectedOutletId = card.dataset.outlet; state.view = 'appointments'; render(); };
   });
   
-  document.querySelectorAll
+  document.querySelectorAll('.cal-day[data-date]').forEach(day => {
+    day.onclick = () => { 
+      state.selectedDate = day.dataset.date;
+      const [y, m] = day.dataset.date.split('-').map(Number);
+      state.calendarYear = y;
+      state.calendarMonth = m - 1;
+      render(); 
+    };
+  });
+
+  document.querySelectorAll('.cal-nav button').forEach(btn => {
+    btn.onclick = () => {
+      const dir = btn.dataset.cal;
+      if (dir === 'prev') {
+        state.calendarMonth--;
+        if (state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
+      } else {
+        state.calendarMonth++;
+        if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
+      }
+      render();
+    };
+  });
+
+  document.querySelectorAll('.outlet-side-item').forEach(btn => {
+    btn.onclick = () => { state.selectedOutletId = btn.dataset.outlet; render(); };
+  });
+  document.querySelectorAll('.guest-card').forEach(card => {
+    card.onclick = () => openAppointmentModal(card.dataset.appt);
+  });
+  document.getElementById('btnNewAppt')?.addEventListener('click', () => openAppointmentModal());
+  document.getElementById('btnResvReport')?.addEventListener('click', () => { state.view = 'reports'; render(); });
+  document.getElementById('btnPrintReport')?.addEventListener('click', () => window.print());
+  document.getElementById('btnAddOutlet')?.addEventListener('click', () => openOutletModal());
+  
+  const actionMenuBtn = document.getElementById('actionMenuBtn');
+  const actionMenuDropdown = document.getElementById('actionMenuDropdown');
+  if (actionMenuBtn && actionMenuDropdown) {
+    actionMenuBtn.onclick = (e) => {
+      e.stopPropagation();
+      actionMenuDropdown.classList.toggle('hidden');
+    };
+    document.addEventListener('click', () => actionMenuDropdown.classList.add('hidden'));
+    actionMenuDropdown.onclick = (e) => {
+      e.stopPropagation();
+      const item = e.target.closest('.action-dropdown-item');
+      if (!item) return;
+      actionMenuDropdown.classList.add('hidden');
+      const action = item.dataset.action;
+      if (action === 'new-appt') openAppointmentModal();
+      if (action === 'change-date') {
+        const newD = prompt('Enter date (YYYY-MM-DD):', state.
