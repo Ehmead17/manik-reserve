@@ -1010,4 +1010,53 @@ function openOutletModal(outletId = null) {
         <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
           <div class="form-group"><label>Period name</label>
             <input type="text" id="outPeriod" value="${o?.operatingPeriods?.[0]?.name || 'Dinner'}" /></div>
-          <div class="form-group"><label>Start</
+          <div class="form-group"><label>Start</label>
+            <input type="time" id="outStart" value="${o?.operatingPeriods?.[0]?.start || '18:30'}" /></div>
+          <div class="form-group"><label>End</label>
+            <input type="time" id="outEnd" value="${o?.operatingPeriods?.[0]?.end || '22:30'}" /></div>
+        </div>
+        <div class="form-group"><label>Max covers</label>
+          <input type="number" id="outMax" value="${o?.operatingPeriods?.[0]?.maxPax || 40}" /></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalSave">Save</button>
+      </div></div>`;
+  const close = () => { modalRoot.classList.add('hidden'); modalRoot.innerHTML = ''; };
+  document.getElementById('modalClose').onclick = close;
+  document.getElementById('modalCancel').onclick = close;
+  document.getElementById('modalSave').onclick = () => {
+    const name = document.getElementById('outName').value.trim();
+    if (!name) { alert('Name required'); return; }
+    const period = {
+      name: document.getElementById('outPeriod').value || 'Service',
+      start: document.getElementById('outStart').value,
+      end: document.getElementById('outEnd').value,
+      maxPax: parseInt(document.getElementById('outMax').value) || 40
+    };
+    if (isEdit) {
+      Object.assign(o, {
+        name, short: document.getElementById('outShort').value || name,
+        type: document.getElementById('outType').value || 'Dining', operatingPeriods: [period]
+      });
+      logAudit('Updated outlet', name); toast('Outlet updated');
+    } else {
+      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      state.outlets.push({
+        id, name, short: document.getElementById('outShort').value || name,
+        type: document.getElementById('outType').value || 'Dining',
+        iconClass: 'market', icon: name[0].toUpperCase(),
+        operatingPeriods: [period], active: true
+      });
+      logAudit('Created outlet', name); toast('Outlet added');
+    }
+    close(); render();
+  };
+}
+
+function bindViewEvents() {
+  document.querySelectorAll('.outlet-card').forEach(card => {
+    card.onclick = () => { state.selectedOutletId = card.dataset.outlet; state.view = 'appointments'; render(); };
+  });
+  
+  document.querySelectorAll
