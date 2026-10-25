@@ -21,14 +21,16 @@ const state = {
   loggedIn: false,
   user: null,
   view: 'dashboard',
-  selectedDate: '2026-10-18',
+  selectedDate: '2026-10-25',
+  calendarYear: 2026,
+  calendarMonth: 9, // 0-indexed (9 = October)
   selectedOutletId: 'bottega',
   appointments: JSON.parse(JSON.stringify(sampleAppointments)),
   outlets: JSON.parse(JSON.stringify(seedOutlets)),
   auditLog: [
-    { time: '2026-10-18 09:12', user: 'Aisha Hassan', action: 'Created appointment', detail: 'Room 222 → Bottega 18:30' },
-    { time: '2026-10-18 09:45', user: 'Rashid Ali', action: 'Created appointment', detail: 'Room 118 → Bottega 18:30' },
-    { time: '2026-10-18 10:02', user: 'Aisha Hassan', action: 'Updated notes', detail: 'Room 125 allergy note' },
+    { time: '2026-10-25 09:12', user: 'Aisha Hassan', action: 'Created appointment', detail: 'Room 222 → Bottega 18:30' },
+    { time: '2026-10-25 09:45', user: 'Rashid Ali', action: 'Created appointment', detail: 'Room 118 → Bottega 18:30' },
+    { time: '2026-10-25 10:02', user: 'Aisha Hassan', action: 'Updated notes', detail: 'Room 125 allergy note' },
   ]
 };
 
@@ -210,17 +212,16 @@ function renderDashboard() {
 }
 
 function renderCalendar() {
-  const d = new Date(state.selectedDate + 'T12:00:00');
-  const year = d.getFullYear(), month = d.getMonth();
+  const year = state.calendarYear, month = state.calendarMonth;
   const startDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthName = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const monthName = new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   let days = '';
   const prevDays = new Date(year, month, 0).getDate();
   for (let i = startDay - 1; i >= 0; i--) days += `<div class="cal-day other">${prevDays - i}</div>`;
   for (let day = 1; day <= daysInMonth; day++) {
     const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    days += `<div class="cal-day ${iso === state.selectedDate ? 'selected' : ''} ${iso === '2026-10-18' && iso !== state.selectedDate ? 'today' : ''}" data-date="${iso}">${day}</div>`;
+    days += `<div class="cal-day ${iso === state.selectedDate ? 'selected' : ''} ${iso === '2026-10-25' && iso !== state.selectedDate ? 'today' : ''}" data-date="${iso}">${day}</div>`;
   }
   return `<div class="calendar"><div class="cal-header"><span>${monthName}</span>
     <div class="cal-nav"><button data-cal="prev">‹</button><button data-cal="next">›</button></div></div>
@@ -235,7 +236,6 @@ function renderAppointments() {
   if (!outlet) return '<p>Select an outlet</p>';
   const period = outlet.operatingPeriods[outlet.operatingPeriods.length - 1];
   
-  // Use custom saved slots if available, otherwise generate them
   const slots = period.slots ? period.slots.map(s => s.time) : generateTimeSlots(period.start, period.end, 30);
   const maxPax = period.maxPax;
   const defaultPerSlot = Math.ceil(maxPax / Math.max(slots.length - 2, 1));
@@ -514,7 +514,6 @@ function openSlotCapacityModal() {
     const end = document.getElementById('capEnd').value;
     const maxPax = parseInt(document.getElementById('capMaxDay').value) || 40;
     
-    // Collect customized slots and max concurrent capacities from the table
     const customSlots = [];
     document.querySelectorAll('#slotsTableBody tr').forEach(tr => {
       const tInput = tr.querySelector('.slot-time-input');
@@ -531,7 +530,7 @@ function openSlotCapacityModal() {
     period.start = start;
     period.end = end;
     period.maxPax = maxPax;
-    period.slots = customSlots; // Save custom slot configuration directly to the outlet!
+    period.slots = customSlots;
 
     logAudit('Updated slot capacities', `${outlet.name} slots updated`);
     toast('Slots capacity updated successfully');
@@ -628,7 +627,6 @@ function openAppointmentModal(apptId = null) {
     if (!selectedGuests.length) {
       el.innerHTML = '<span style="color:var(--ink-400);font-size:12px">Select guests first</span>'; return;
     }
-    // Calculate perSlot dynamically using the custom capacity if present
     const dynamicPerSlot = (t) => {
       const sc = period?.slots?.find(s => s.time === t);
       return sc ? sc.maxPax : defaultPerSlot;
@@ -803,9 +801,27 @@ function bindViewEvents() {
   document.querySelectorAll('.outlet-card').forEach(card => {
     card.onclick = () => { state.selectedOutletId = card.dataset.outlet; state.view = 'appointments'; render(); };
   });
+  
+  // Calendar day clicks
   document.querySelectorAll('.cal-day[data-date]').forEach(day => {
     day.onclick = () => { state.selectedDate = day.dataset.date; render(); };
   });
+
+  // Calendar month navigation arrows (‹ and ›)
+  document.querySelectorAll('.cal-nav button').forEach(btn => {
+    btn.onclick = () => {
+      const dir = btn.dataset.cal;
+      if (dir === 'prev') {
+        state.calendarMonth--;
+        if (state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
+      } else {
+        state.calendarMonth++;
+        if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
+      }
+      render();
+    };
+  });
+
   document.querySelectorAll('.outlet-side-item').forEach(btn => {
     btn.onclick = () => { state.selectedOutletId = btn.dataset.outlet; render(); };
   });
@@ -897,7 +913,7 @@ function showGuestItinerary(res) {
   resultEl.innerHTML = `
     <div style="text-align:left;background:white;border:1px solid var(--sand-200);border-radius:12px;padding:20px;">
       <h3 style="margin-bottom:4px">${res.guests.map(g => `${g.title} ${g.firstName} ${g.lastName}`).join(' & ')}</h3>
-      <p style="color:var(--ink-400);font-size:13px;margin-bottom:16px">
+      <p style="color:var(--ink-400);font-size:13.5px;margin-bottom:16px">
         Room ${res.room} · ${res.confirmation} · Butler ${res.butler} · ${formatShortDate(res.arrival)} → ${formatShortDate(res.departure)}</p>
       ${guestAppts.map(a => {
         const o = getOutlet(a.outletId);
