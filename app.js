@@ -645,7 +645,10 @@ function openAppointmentModal(apptId = null) {
         <button class="modal-close" id="modalClose">×</button></div>
       <div class="modal-body">
         <div class="form-group relative">
-          <label>Search for Profiles</label>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label style="margin:0;">Search for Profiles</label>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnAddCB" style="padding:4px 12px; font-size:12px; font-weight:600; background:var(--accent,#38bdf8); color:#0f172a; border:none; border-radius:6px; cursor:pointer;" title="Add Custom Booking">+CB</button>
+          </div>
           <input type="text" id="profileSearch" placeholder="Room number, confirmation, or guest name…" autocomplete="off" />
           <div id="profileResults" class="search-results hidden"></div>
         </div>
@@ -797,6 +800,25 @@ function openAppointmentModal(apptId = null) {
   const searchInput = document.getElementById('profileSearch');
   const resultsEl = document.getElementById('profileResults');
   
+  function addCurrentSearchAsCustom() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    const nameParts = q.split(' ');
+    const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
+    customGuests.push({
+      id: 'cg_' + Date.now() + Math.random(),
+      name: q,
+      initials: initials,
+      room: 'Ext',
+      pax: 1
+    });
+    searchInput.value = '';
+    resultsEl.classList.add('hidden');
+    renderChips();
+  }
+
+  document.getElementById('btnAddCB').onclick = addCurrentSearchAsCustom;
+
   searchInput.oninput = () => {
     const q = searchInput.value.trim();
     if (!q) { resultsEl.classList.add('hidden'); return; }
@@ -816,7 +838,7 @@ function openAppointmentModal(apptId = null) {
 
     html += `
       <div class="search-result-item" id="addCustomProfileOption" style="border-top:1px solid var(--sand-200,#334155); color:var(--accent,#38bdf8); font-weight:500; padding:10px 14px; cursor:pointer;">
-        + Add "${q}" as custom guest
+        + Add "${q}" as custom guest (+CB)
       </div>`;
 
     resultsEl.classList.remove('hidden');
@@ -839,20 +861,7 @@ function openAppointmentModal(apptId = null) {
 
     const addCustomOpt = document.getElementById('addCustomProfileOption');
     if (addCustomOpt) {
-      addCustomOpt.onclick = () => {
-        const nameParts = q.split(' ');
-        const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
-        customGuests.push({
-          id: 'cg_' + Date.now() + Math.random(),
-          name: q,
-          initials: initials,
-          room: 'Ext',
-          pax: 1
-        });
-        searchInput.value = '';
-        resultsEl.classList.add('hidden');
-        renderChips();
-      };
+      addCustomOpt.onclick = addCurrentSearchAsCustom;
     }
   };
 
@@ -991,161 +1000,3 @@ function openOutletModal(outletId = null) {
     } else {
       const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       state.outlets.push({
-        id, name, short: document.getElementById('outShort').value || name,
-        type: document.getElementById('outType').value || 'Dining',
-        iconClass: 'market', icon: name[0].toUpperCase(),
-        operatingPeriods: [period], active: true
-      });
-      logAudit('Created outlet', name); toast('Outlet added');
-    }
-    close(); render();
-  };
-}
-
-function bindViewEvents() {
-  document.querySelectorAll('.outlet-card').forEach(card => {
-    card.onclick = () => { state.selectedOutletId = card.dataset.outlet; state.view = 'appointments'; render(); };
-  });
-  
-  document.querySelectorAll('.cal-day[data-date]').forEach(day => {
-    day.onclick = () => { 
-      state.selectedDate = day.dataset.date;
-      const [y, m] = day.dataset.date.split('-').map(Number);
-      state.calendarYear = y;
-      state.calendarMonth = m - 1;
-      render(); 
-    };
-  });
-
-  document.querySelectorAll('.cal-nav button').forEach(btn => {
-    btn.onclick = () => {
-      const dir = btn.dataset.cal;
-      if (dir === 'prev') {
-        state.calendarMonth--;
-        if (state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
-      } else {
-        state.calendarMonth++;
-        if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
-      }
-      render();
-    };
-  });
-
-  document.querySelectorAll('.outlet-side-item').forEach(btn => {
-    btn.onclick = () => { state.selectedOutletId = btn.dataset.outlet; render(); };
-  });
-  document.querySelectorAll('.guest-card').forEach(card => {
-    card.onclick = () => openAppointmentModal(card.dataset.appt);
-  });
-  document.getElementById('btnNewAppt')?.addEventListener('click', () => openAppointmentModal());
-  document.getElementById('btnResvReport')?.addEventListener('click', () => { state.view = 'reports'; render(); });
-  document.getElementById('btnPrintReport')?.addEventListener('click', () => window.print());
-  document.getElementById('btnAddOutlet')?.addEventListener('click', () => openOutletModal());
-  
-  const actionMenuBtn = document.getElementById('actionMenuBtn');
-  const actionMenuDropdown = document.getElementById('actionMenuDropdown');
-  if (actionMenuBtn && actionMenuDropdown) {
-    actionMenuBtn.onclick = (e) => {
-      e.stopPropagation();
-      actionMenuDropdown.classList.toggle('hidden');
-    };
-    document.addEventListener('click', () => actionMenuDropdown.classList.add('hidden'));
-    actionMenuDropdown.onclick = (e) => {
-      e.stopPropagation();
-      const item = e.target.closest('.action-dropdown-item');
-      if (!item) return;
-      actionMenuDropdown.classList.add('hidden');
-      const action = item.dataset.action;
-      if (action === 'new-appt') openAppointmentModal();
-      if (action === 'change-date') {
-        const newD = prompt('Enter date (YYYY-MM-DD):', state.selectedDate);
-        if (newD) { 
-          state.selectedDate = newD; 
-          const [y, m] = newD.split('-').map(Number);
-          state.calendarYear = y;
-          state.calendarMonth = m - 1;
-          render(); 
-        }
-      }
-      if (action === 'switch-outlet') {
-        const nextO = state.outlets[(state.outlets.findIndex(o => o.id === state.selectedOutletId) + 1) % state.outlets.length];
-        state.selectedOutletId = nextO.id;
-        render();
-      }
-      if (action === 'resv-report') { state.view = 'reports'; render(); }
-      if (action === 'refresh-guests') { toast('Guests list refreshed'); }
-      if (action === 'update-slots') { openSlotCapacityModal(); }
-      if (action === 'update-dates') { alert('Operating dates configuration'); }
-    };
-  }
-
-  document.querySelectorAll('[data-edit-outlet]').forEach(btn => {
-    btn.onclick = () => openOutletModal(btn.dataset.editOutlet);
-  });
-  document.querySelectorAll('[data-toggle-outlet]').forEach(btn => {
-    btn.onclick = () => {
-      const o = getOutlet(btn.dataset.toggleOutlet);
-      o.active = !o.active;
-      logAudit(o.active ? 'Activated outlet' : 'Deactivated outlet', o.name);
-      toast(`${o.name} ${o.active ? 'activated' : 'deactivated'}`);
-      render();
-    };
-  });
-  const gsSearch = document.getElementById('guestScheduleSearch');
-  if (gsSearch) {
-    gsSearch.oninput = () => {
-      const results = searchOpera(gsSearch.value);
-      const el = document.getElementById('gsSearchResults');
-      if (!results.length) { el.classList.add('hidden'); return; }
-      el.classList.remove('hidden');
-      el.innerHTML = results.map(res => `
-        <div class="search-result-item" data-res="${res.reservationId}">
-          <span class="sr-room">${res.room}</span>
-          <div><div class="sr-name">${res.guests.map(g => `${g.title} ${g.lastName}`).join(', ')}</div>
-          <div class="sr-meta">${res.confirmation}</div></div></div>`).join('');
-      el.querySelectorAll('.search-result-item').forEach(item => {
-        item.onclick = () => {
-          const res = getReservation(item.dataset.res);
-          el.classList.add('hidden');
-          gsSearch.value = `Room ${res.room}`;
-          showGuestItinerary(res);
-        };
-      });
-    };
-  }
-}
-
-function showGuestItinerary(res) {
-  const guestAppts = state.appointments
-    .filter(a => a.reservationId === res.reservationId)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  const resultEl = document.getElementById('guestScheduleResult');
-  if (!guestAppts.length) {
-    resultEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🗓</div>
-      <h3>No appointments yet</h3><p>Room ${res.room} has no bookings across outlets.</p></div>`;
-    return;
-  }
-  resultEl.innerHTML = `
-    <div style="text-align:left;background:white;border:1px solid var(--sand-200);border-radius:12px;padding:20px;">
-      <h3 style="margin-bottom:4px">${res.guests.map(g => `${g.title} ${g.firstName} ${g.lastName}`).join(' & ')}</h3>
-      <p style="color:var(--ink-400);font-size:13.5px;margin-bottom:16px">
-        Room ${res.room} · ${res.confirmation} · Butler ${res.butler} · ${formatShortDate(res.arrival)} → ${formatShortDate(res.departure)}</p>
-      ${guestAppts.map(a => {
-        const o = getOutlet(a.outletId);
-        const allergies = detectAllergies(a.comments);
-        
-        let allergyTagsHtml = '';
-        if (allergies.length) {
-          allergyTagsHtml = `<div class="allergy-tags" style="margin-top:4px">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>`;
-        }
-
-        return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--sand-100)">
-          <div style="min-width:90px;font-weight:600;color:var(--sage-700)">${formatTime(a.time)}</div>
-          <div><strong>${o?.name || a.outletId}</strong>${a.mealPlan ? ` · ${a.mealPlan}` : ''}
-            <div style="font-size:12.5px;color:var(--ink-400)">${appointmentTypes.find(t => t.id === a.type)?.name} · ${a.pax} pax</div>
-            ${allergyTagsHtml}
-          </div></div>`;
-      }).join('')}</div>`;
-}
-
-renderLogin();
