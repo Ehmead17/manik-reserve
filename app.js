@@ -303,8 +303,11 @@ function renderAppointments() {
       return `<div class="guest-card ${allergies.length ? 'has-allergy' : ''}" data-appt="${a.id}">
         <div class="gc-room">${a.room || 'Ext'}${a.mealPlan ? ' · ' + a.mealPlan : ''}</div>
         <div class="gc-name">${primaryName}</div>
-        <div class="gc-meta"><span>${appointmentTypes.find(t => t.id === a.type)?.name || a.type}</span>
-        ${more ? `<span>${more}</span>` : ''}</div>
+        <div class="gc-meta">
+          <span>${appointmentTypes.find(t => t.id === a.type)?.name || a.type}</span>
+          <span style="color:var(--accent,#38bdf8);font-weight:600;">👥 ${a.pax} Pax</span>
+          ${more ? `<span>${more}</span>` : ''}
+        </div>
         ${allergyTagsHtml}
       </div>`;
     }).join('');
@@ -674,7 +677,10 @@ function openAppointmentModal(apptId = null) {
         </div>
 
         <div id="conflictWarning" class="ai-banner critical hidden" style="margin-bottom:12px"></div>
-        <div class="form-group"><label>Guests</label><div id="guestChips"></div></div>
+        <div class="form-group">
+          <label>Guests <span id="guestCountBadge" style="color:var(--accent,#38bdf8); font-weight:600;">(0 total)</span></label>
+          <div id="guestChips"></div>
+        </div>
         <div class="form-group"><label>Comments</label>
           <textarea id="apptComments" placeholder="Allergies, special requests…">${appt?.comments || ''}</textarea>
           <div id="allergyPreview" class="allergy-tags" style="margin-top:8px"></div></div>
@@ -687,6 +693,10 @@ function openAppointmentModal(apptId = null) {
 
   function renderChips() {
     const el = document.getElementById('guestChips');
+    const badgeEl = document.getElementById('guestCountBadge');
+    const totalPax = selectedGuests.length + customGuests.length;
+    if (badgeEl) badgeEl.textContent = `(${totalPax} total)`;
+
     if (!selectedGuests.length && !customGuests.length) {
       el.innerHTML = '<span style="color:var(--ink-400);font-size:13px">No guests selected yet</span>';
       updateSuggestions(); return;
