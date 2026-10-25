@@ -401,7 +401,7 @@ function renderReports() {
       if (res) { ga += res.adults; gc += res.children; }
       ga += (a.customGuests?.length || 0);
     });
-    rows += `<tr class="slot-header"><td colspan="8">${formatTime(time)} · Adults: ${ga} · Children: ${gc}</td></tr>`;
+    rows += `<tr class="slot-header" style="background:#f1f5f9; color:#0f172a; font-weight:600;"><td colspan="8" style="padding:10px 16px;">${formatTime(time)} · Adults: ${ga} · Children: ${gc}</td></tr>`;
     group.forEach(a => {
       const res = getReservation(a.reservationId);
       const allergies = detectAllergies(a.comments);
@@ -409,32 +409,36 @@ function renderReports() {
       
       let allergyTagsHtml = '';
       if (allergies.length) {
-        allergyTagsHtml = `<div class="allergy-tags">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>`;
+        allergyTagsHtml = `<div class="allergy-tags" style="margin-top:4px">${allergies.map(x => `<span class="allergy-tag" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600; display:inline-block; margin-right:4px;">${x}</span>`).join('')}</div>`;
       }
 
       if (res) {
         res.guests.forEach((g, idx) => {
           const natCode = getNationalityCode(g.nationality);
-          rows += `<tr>
-            <td>${res.room}</td><td>${g.title} ${g.firstName} ${g.lastName}</td>
-            <td>${idx === 0 ? (res.butler || '') : ''}</td>
-            <td>${idx === 0 ? natCode : ''}</td>
-            <td>${idx === 0 ? formatShortDate(res.departure) : ''}</td>
-            <td>${idx === 0 ? mp : ''}</td>
-            <td>${idx === 0 ? `${res.adults}A${res.children ? ' + ' + res.children + 'C' : ''}` : ''}</td>
-            <td class="allergy-note">${idx === 0 ? (a.comments || '') : ''}
+          rows += `<tr style="border-bottom:1px solid #e2e8f0; color:#0f172a;">
+            <td style="padding:12px 16px; color:#0f172a;">${res.room}</td>
+            <td style="padding:12px 16px; color:#0f172a; font-weight:500;">${g.title} ${g.firstName} ${g.lastName}</td>
+            <td style="padding:12px 16px; color:#334155;">${idx === 0 ? (res.butler || '') : ''}</td>
+            <td style="padding:12px 16px; color:#334155;">${idx === 0 ? natCode : ''}</td>
+            <td style="padding:12px 16px; color:#334155;">${idx === 0 ? formatShortDate(res.departure) : ''}</td>
+            <td style="padding:12px 16px; color:#334155;">${idx === 0 ? mp : ''}</td>
+            <td style="padding:12px 16px; color:#334155;">${idx === 0 ? `${res.adults}A${res.children ? ' + ' + res.children + 'C' : ''}` : ''}</td>
+            <td style="padding:12px 16px; color:#334155;">${idx === 0 ? (a.comments || '') : ''}
               ${idx === 0 ? allergyTagsHtml : ''}
             </td></tr>`;
         });
       }
       if (a.customGuests && a.customGuests.length) {
         a.customGuests.forEach((cg, idx) => {
-          rows += `<tr>
-            <td>Ext</td>
-            <td><strong>${cg.name}</strong> (Custom Guest)</td>
-            <td>—</td><td>${cg.nationalityCode ? cg.nationalityCode.toUpperCase() : '—'}</td><td>—</td><td>${mp}</td>
-            <td>1A</td>
-            <td class="allergy-note">${idx === 0 ? (a.comments || '') : ''}
+          rows += `<tr style="border-bottom:1px solid #e2e8f0; color:#0f172a;">
+            <td style="padding:12px 16px; color:#0f172a;">Ext</td>
+            <td style="padding:12px 16px; color:#0f172a; font-weight:500;"><strong>${cg.name}</strong> (Custom Guest)</td>
+            <td style="padding:12px 16px; color:#334155;">—</td>
+            <td style="padding:12px 16px; color:#334155;">${cg.nationalityCode ? cg.nationalityCode.toUpperCase() : '—'}</td>
+            <td style="padding:12px 16px; color:#334155;">—</td>
+            <td style="padding:12px 16px; color:#334155;">${mp}</td>
+            <td style="padding:12px 16px; color:#334155;">1A</td>
+            <td style="padding:12px 16px; color:#334155;">${idx === 0 ? (a.comments || '') : ''}
               ${idx === 0 ? allergyTagsHtml : ''}
             </td></tr>`;
         });
@@ -442,16 +446,22 @@ function renderReports() {
     });
   });
   return `<div class="view-header"><div>
-    <h1>${outlet.name}</h1>
-    <p>Reservations for ${formatDate(state.selectedDate)} · Total: ${totalAdults}A + ${totalChildren}C</p></div>
+    <h1 style="color:#0f172a;">${outlet.name}</h1>
+    <p style="color:#475569;">Reservations for ${formatDate(state.selectedDate)} · Total: ${totalAdults}A + ${totalChildren}C</p></div>
     <div class="header-actions"><button class="btn btn-secondary" id="btnPrintReport">Print</button></div></div>
-    <div class="ai-banner"><div class="ai-icon">AI</div><div>${summary}</div></div>
-    <div style="background:white;border:1px solid var(--sand-200);border-radius:12px;overflow:hidden;">
-      <table class="report-table"><thead><tr>
-        <th>Room</th><th>Name</th><th>GEM</th>
-        <th>Nationality</th><th>Departure</th><th>Meal Plan</th><th>Pax</th><th>Notes</th>
+    <div class="ai-banner" style="background:#f8fafc; border:1px solid #cbd5e1; color:#0f172a;"><div class="ai-icon" style="background:#e2e8f0; color:#0f172a;">AI</div><div>${summary}</div></div>
+    <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+      <table class="report-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:13.5px;"><thead><tr style="background:#0f172a; color:#ffffff;">
+        <th style="padding:12px 16px; color:#ffffff;">Room</th>
+        <th style="padding:12px 16px; color:#ffffff;">Name</th>
+        <th style="padding:12px 16px; color:#ffffff;">GEM</th>
+        <th style="padding:12px 16px; color:#ffffff;">Nationality</th>
+        <th style="padding:12px 16px; color:#ffffff;">Departure</th>
+        <th style="padding:12px 16px; color:#ffffff;">Meal Plan</th>
+        <th style="padding:12px 16px; color:#ffffff;">Pax</th>
+        <th style="padding:12px 16px; color:#ffffff;">Notes</th>
       </tr></thead>
-      <tbody>${rows || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ink-400)">No reservations</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b">No reservations</td></tr>'}</tbody>
       </table></div>`;
 }
 
@@ -1181,13 +1191,4 @@ function showGuestItinerary(res) {
           allergyTagsHtml = `<div class="allergy-tags" style="margin-top:4px">${allergies.map(x => `<span class="allergy-tag">${x}</span>`).join('')}</div>`;
         }
 
-        return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--sand-100)">
-          <div style="min-width:90px;font-weight:600;color:var(--sage-700)">${formatTime(a.time)}</div>
-          <div><strong>${o?.name || a.outletId}</strong>${a.mealPlan ? ` · ${a.mealPlan}` : ''}
-            <div style="font-size:12.5px;color:var(--ink-400)">${appointmentTypes.find(t => t.id === a.type)?.name} · ${a.pax} pax</div>
-            ${allergyTagsHtml}
-          </div></div>`;
-      }).join('')}</div>`;
-}
-
-renderLogin();
+        return `<div style="display:flex;gap:12px
