@@ -1,5 +1,5 @@
 import {
-  outlets as seedOutlets,
+  seedOutlets,
   mockOperaGuests,
   sampleAppointments,
   appointmentTypes,
