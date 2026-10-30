@@ -75,7 +75,48 @@ function formatShortDate(iso) {
 }
 function formatTime(t) {
   const [h, m] = t.split(':').map(Number);
-  return `${h \% 12 \vert{}\vert{} 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; } function getNationalityCode(nat) { if (!nat) return 'GB'; const upper = nat.toUpperCase(); if (upper.length <= 3) return upper; const map = { 'UNITED KINGDOM': 'GB', 'BRITISH': 'GB', 'RUSSIA': 'RU', 'RUSSIAN': 'RU', 'MALDIVES': 'MV', 'MALDIVIAN': 'MV', 'GERMANY': 'DE', 'GERMAN': 'DE', 'FRANCE': 'FR', 'FRENCH': 'FR', 'UNITED STATES': 'US', 'USA': 'US', 'AUSTRALIA': 'AU', 'CHINA': 'CN', 'INDIA': 'IN' }; return map[upper] \vert{}\vert{} upper.slice(0, 2); } function getOutlet(id) { return state.outlets.find(o => o.id === id); } function getAppointmentsFor(outletId, date) { return state.appointments.filter(a => a.outletId === outletId && a.date === date); } function getCovers(outletId, date) { return getAppointmentsFor(outletId, date).reduce((s, a) => s + a.pax, 0); } function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2800); } function logAudit(action, detail) { const now = new Date(); const time = `${state.selectedDate} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+function getNationalityCode(nat) {
+  if (!nat) return 'GB';
+  const upper = nat.toUpperCase();
+  if (upper.length <= 3) return upper;
+  const map = {
+    'UNITED KINGDOM': 'GB',
+    'BRITISH': 'GB',
+    'RUSSIA': 'RU',
+    'RUSSIAN': 'RU',
+    'MALDIVES': 'MV',
+    'MALDIVIAN': 'MV',
+    'GERMANY': 'DE',
+    'GERMAN': 'DE',
+    'FRANCE': 'FR',
+    'FRENCH': 'FR',
+    'UNITED STATES': 'US',
+    'USA': 'US',
+    'AUSTRALIA': 'AU',
+    'CHINA': 'CN',
+    'INDIA': 'IN'
+  };
+  return map[upper] || upper.slice(0, 2);
+}
+function getOutlet(id) { return state.outlets.find(o => o.id === id); }
+function getAppointmentsFor(outletId, date) {
+  return state.appointments.filter(a => a.outletId === outletId && a.date === date);
+}
+function getCovers(outletId, date) {
+  return getAppointmentsFor(outletId, date).reduce((s, a) => s + a.pax, 0);
+}
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+function logAudit(action, detail) {
+  const now = new Date();
+  const time = `${state.selectedDate} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   state.auditLog.unshift({ time, user: state.user?.name || 'System', action, detail });
 }
 function canAdmin() { return state.user?.role === 'admin' || state.user?.role === 'gem'; }
@@ -231,7 +272,7 @@ function renderDashboard() {
       <div class="outlet-icon ${o.iconClass}">${o.icon}</div>
       <div class="outlet-info"><h3>${o.name}</h3>
         <div class="outlet-meta"><span>👥 ${covers} pax · ${apptCount} booking${apptCount !== 1 ? 's' : ''}</span>
-        <span>🕐 ${period.name}: ${period.start} –${period.end}</span></div>
+        <span>🕐 ${period.name}: ${period.start} – ${period.end}</span></div>
       </div>
       <div class="outlet-stats"><div class="covers-num">${covers}</div><div class="covers-label">${fc.level}</div></div>
     </div>`;
@@ -265,7 +306,11 @@ function renderCalendar() {
   const monthName = new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   let days = '';
   const prevDays = new Date(year, month, 0).getDate();
-  for (let i = startDay - 1; i >= 0; i--) days += `<div class="cal-day other">${prevDays - i}</div>`;  const todayIso = '2026-10-25'; for (let day = 1; day <= daysInMonth; day++) { const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  for (let i = startDay - 1; i >= 0; i--) days += `<div class="cal-day other">${prevDays - i}</div>`;
+  
+  const todayIso = '2026-10-25';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const isSelected = iso === state.selectedDate;
     const isToday = iso === todayIso;
     
@@ -481,7 +526,7 @@ function renderAdmin() {
 function renderAudit() {
   const items = state.auditLog.map(a => `
     <div class="audit-item"><div class="audit-time">${a.time}</div>
-    <div><span class="audit-action">${a.action}</span> ·${a.detail}</div>
+    <div><span class="audit-action">${a.action}</span> · ${a.detail}</div>
     <div style="color:var(--ink-400);font-size:12px">${a.user}</div></div>`).join('');
   return `<div class="view-header"><div><h1>Audit Logs</h1><p>Who changed what, and when</p></div></div>
     <div class="audit-list" style="display:flex; flex-direction:column; gap:8px;">${items}</div>`;
@@ -522,4 +567,212 @@ function openSlotCapacityModal() {
           </div>
         </div>
         <div class="form-row" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));">
-          <div class="form-group"><label
+          <div class="form-group"><label>Appointments Cut Off</label>
+            <select><option value="enabled">Enabled</option><option value="disabled">Disabled</option></select>
+          </div>
+          <div class="form-group"><label>Appointments Cut Off Prior to</label>
+            <input type="number" value="1" />
+            <div class="form-hint" style="font-size:11px; color:var(--ink-400); margin-top:2px;">The cut off is number of hours prior to period start time.</div>
+          </div>
+        </div>
+        
+        <div style="margin-top:20px;">
+          <h3 style="font-size:14px; font-weight:600; margin-bottom:10px;">Current list of Time Slots</h3>
+          <div style="border:1px solid var(--sand-200,#334155); border-radius:8px; overflow-x:auto;">
+            <table style="width:100%; min-width:400px; border-collapse:collapse; text-align:left; font-size:13px;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--sand-200,#334155); background:rgba(255,255,255,0.02);">
+                  <th style="padding:10px 14px;">Time</th>
+                  <th style="padding:10px 14px;">Max Concurrent</th>
+                  <th style="padding:10px 14px; text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="slotsTableBody">
+                ${initialSlots.map(t => {
+                  const existing = period.slots?.find(s => s.time === t);
+                  const maxVal = existing ? existing.maxPax : Math.ceil(period.maxPax / initialSlots.length);
+                  return `
+                  <tr style="border-bottom:1px solid var(--sand-100,#1e293b);">
+                    <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="${t}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
+                    <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="${maxVal}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
+                    <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
+                  </tr>
+                `}).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px; text-align:center;">
+            <button class="btn btn-secondary" id="btnAddTimeSlot" style="width:100%; padding:8px;">+ Add Time Slot</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalSave">Save</button>
+      </div>
+    </div>`;
+
+  const close = () => { modalRoot.classList.add('hidden'); modalRoot.innerHTML = ''; };
+  document.getElementById('modalClose').onclick = close;
+  document.getElementById('modalCancel').onclick = close;
+  modalRoot.onclick = e => { if (e.target === modalRoot) close(); };
+
+  document.getElementById('btnGenSlots').onclick = () => {
+    const start = document.getElementById('capStart').value;
+    const end = document.getElementById('capEnd').value;
+    const defaultMax = parseInt(document.getElementById('genMaxPax').value) || 15;
+    const generatedTimes = generateTimeSlots(start, end, 30);
+    const tbody = document.getElementById('slotsTableBody');
+    tbody.innerHTML = generatedTimes.map(t => `
+      <tr style="border-bottom:1px solid var(--sand-100,#1e293b);">
+        <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="${t}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
+        <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="${defaultMax}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
+        <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
+      </tr>
+    `).join('');
+    tbody.querySelectorAll('.slot-delete-btn').forEach(btn => {
+      btn.onclick = (e) => e.target.closest('tr').remove();
+    });
+  };
+
+  document.getElementById('btnAddTimeSlot').onclick = () => {
+    const tbody = document.getElementById('slotsTableBody');
+    const tr = document.createElement('tr');
+    tr.style.cssText = 'border-bottom:1px solid var(--sand-100,#1e293b);';
+    tr.innerHTML = `
+      <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="20:00" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
+      <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="15" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
+      <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
+    `;
+    tr.querySelector('.slot-delete-btn').onclick = () => tr.remove();
+    tbody.appendChild(tr);
+  };
+
+  document.querySelectorAll('.slot-delete-btn').forEach(btn => {
+    btn.onclick = (e) => e.target.closest('tr').remove();
+  });
+
+  document.getElementById('modalSave').onclick = () => {
+    const name = document.getElementById('capPeriodName').value.trim();
+    const start = document.getElementById('capStart').value;
+    const end = document.getElementById('capEnd').value;
+    const maxPax = parseInt(document.getElementById('capMaxDay').value) || 40;
+    
+    const customSlots = [];
+    document.querySelectorAll('#slotsTableBody tr').forEach(tr => {
+      const tInput = tr.querySelector('.slot-time-input');
+      const mInput = tr.querySelector('.slot-max-input');
+      if (tInput && mInput) {
+        customSlots.push({
+          time: tInput.value,
+          maxPax: parseInt(mInput.value) || 15
+        });
+      }
+    });
+
+    period.name = name;
+    period.start = start;
+    period.end = end;
+    period.maxPax = maxPax;
+    period.slots = customSlots;
+
+    logAudit('Updated slot capacities', `${outlet.name} slots updated`);
+    toast('Slots capacity updated successfully');
+    close();
+    render();
+  };
+}
+
+function openAppointmentModal(apptId = null) {
+  const isEdit = !!apptId;
+  const appt = isEdit ? state.appointments.find(a => a.id === apptId) : null;
+  const outlet = getOutlet(appt?.outletId || state.selectedOutletId);
+  const period = outlet?.operatingPeriods[outlet.operatingPeriods.length - 1];
+  const slots = period?.slots ? period.slots.map(s => s.time) : (period ? generateTimeSlots(period.start, period.end, 30) : []);
+  const defaultPerSlot = period ? Math.ceil(period.maxPax / Math.max(slots.length - 2, 1)) : 8;
+  
+  let selectedGuests = [];
+  let customGuests = appt?.customGuests ? JSON.parse(JSON.stringify(appt.customGuests)) : [];
+  let selectedReservation = null;
+  let currentMealPlan = appt?.mealPlan || 'HB';
+
+  if (appt && !appt.isCustom && appt.guestIds) {
+    selectedGuests = appt.guestIds.map(id => getGuestById(id)).filter(Boolean);
+  }
+  if (appt && appt.reservationId) {
+    selectedReservation = getReservation(appt.reservationId);
+    if (selectedReservation?.billing) currentMealPlan = selectedReservation.billing;
+  }
+
+  const slotCovers = {};
+  slots.forEach(t => {
+    slotCovers[t] = getAppointmentsFor(outlet.id, state.selectedDate)
+      .filter(a => a.time === t && a.id !== apptId)
+      .reduce((s, a) => s + a.pax, 0);
+  });
+
+  const modalRoot = document.getElementById('modalRoot');
+  modalRoot.classList.remove('hidden');
+  modalRoot.innerHTML = `
+    <div class="modal" style="max-width:620px; width:100%; box-sizing:border-box;">
+      <div class="modal-header"><h2>${isEdit ? 'Edit Appointment' : 'Appointment Management'}</h2>
+        <button class="modal-close" id="modalClose">×</button></div>
+      <div class="modal-body">
+        <div class="form-group relative">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label style="margin:0;">Search Profiles or Add Custom Guest (+CB)</label>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <input type="text" id="profileSearch" placeholder="Confirmation, or guest name…" autocomplete="off" style="flex:1; min-width:160px;" />
+            <input type="number" id="customRoomNo" placeholder="Room (1-100)" min="1" max="100" style="width:110px;" title="Room Number (1 to 100)" />
+            <input type="text" id="customNationality" placeholder="Nat (GB)" maxlength="3" style="width:85px; text-transform:uppercase;" />
+            <button type="button" class="btn btn-secondary" id="btnAddCB" style="padding:0 14px; font-size:12px; font-weight:600; background:var(--accent,#38bdf8); color:#0f172a; border:none; border-radius:6px; cursor:pointer;" title="Add Custom Booking">+CB</button>
+          </div>
+          <div id="profileResults" class="search-results hidden"></div>
+        </div>
+
+        <div class="form-row" style="grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));">
+          <div class="form-group"><label>Outlet</label>
+            <select id="apptOutlet">${state.outlets.filter(o => o.active).map(o =>
+              `<option value="${o.id}" ${o.id === (appt?.outletId || state.selectedOutletId) ? 'selected' : ''}>${o.name}</option>`).join('')}</select></div>
+          <div class="form-group"><label>Time Slot</label>
+            <select id="apptTime"><option value="">Select…</option>
+              ${slots.map(t => {
+                const sc = period?.slots?.find(s => s.time === t);
+                const maxC = sc ? sc.maxPax : defaultPerSlot;
+                return `<option value="${t}" ${appt?.time === t ? 'selected' : ''}>${formatTime(t)} (${slotCovers[t] || 0}/${maxC})</option>`;
+              }).join('')}
+            </select></div>
+          <div class="form-group"><label>Appointment</label>
+            <select id="apptType">${appointmentTypes.map(t =>
+              `<option value="${t.id}" ${appt?.type === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select></div>
+        </div>
+
+        <div class="form-row" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));">
+          <div class="form-group"><label>Meal Plan</label>
+            <select id="apptMealPlan">
+              ${mealPlans.map(mp => `<option value="${mp.id}" ${currentMealPlan === mp.id ? 'selected' : ''}>${mp.name}</option>`).join('')}
+            </select></div>
+          <div class="form-group"><label>AI suggested slots</label>
+            <div class="suggest-chips" id="suggestChips"><span style="color:var(--ink-400);font-size:12px">Select guests first</span></div></div>
+        </div>
+
+        <div id="conflictWarning" class="ai-banner critical hidden" style="margin-bottom:12px"></div>
+        <div class="form-group">
+          <label>Guests <span id="guestCountBadge" style="color:var(--accent,#38bdf8); font-weight:600;">(0 total)</span></label>
+          <div id="guestChips"></div>
+        </div>
+        <div class="form-group"><label>Comments</label>
+          <textarea id="apptComments" placeholder="Allergies, special requests…">${appt?.comments || ''}</textarea>
+          <div id="allergyPreview" class="allergy-tags" style="margin-top:8px"></div></div>
+      </div>
+      <div class="modal-footer" style="flex-wrap:wrap; gap:8px;">
+        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+        ${isEdit ? '<button class="btn btn-danger" id="modalDelete">Delete</button>' : ''}
+        <button class="btn btn-primary" id="modalSave">Save</button>
+      </div></div>`;
+
+  function renderChips() {
+    const el = document.getElementById('guestChips');
+    const badgeEl = document.getElementById('guestCountBadge');
+    const totalPax = selectedGuests.length + customGuests.length
