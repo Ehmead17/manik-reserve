@@ -50,9 +50,9 @@ const state = {
   inHouseUpdated: localStorage.getItem('manik_inhouse_updated') || 'Never',
   dietaryUpdated: localStorage.getItem('manik_dietary_updated') || 'Never',
   auditLog: [
-    { time: '2026-10-25 09:12', user: 'Ammadey', action: 'Created appointment', detail: 'Room 222 → Bottega 18:30' },
+    { time: '2026-10-25 09:12', user: 'Aisha Hassan', action: 'Created appointment', detail: 'Room 222 → Bottega 18:30' },
     { time: '2026-10-25 09:45', user: 'Rashid Ali', action: 'Created appointment', detail: 'Room 118 → Bottega 18:30' },
-    { time: '2026-10-25 10:02', user: 'Ammadey', action: 'Updated notes', detail: 'Room 125 allergy note' },
+    { time: '2026-10-25 10:02', user: 'Aisha Hassan', action: 'Updated notes', detail: 'Room 125 allergy note' },
   ]
 };
 
@@ -75,7 +75,48 @@ function formatShortDate(iso) {
 }
 function formatTime(t) {
   const [h, m] = t.split(':').map(Number);
-  return `${h \% 12 \vert{}\vert{} 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; } function getNationalityCode(nat) { if (!nat) return 'GB'; const upper = nat.toUpperCase(); if (upper.length <= 3) return upper; const map = { 'UNITED KINGDOM': 'GB', 'BRITISH': 'GB', 'RUSSIA': 'RU', 'RUSSIAN': 'RU', 'MALDIVES': 'MV', 'MALDIVIAN': 'MV', 'GERMANY': 'DE', 'GERMAN': 'DE', 'FRANCE': 'FR', 'FRENCH': 'FR', 'UNITED STATES': 'US', 'USA': 'US', 'AUSTRALIA': 'AU', 'CHINA': 'CN', 'INDIA': 'IN' }; return map[upper] \vert{}\vert{} upper.slice(0, 2); } function getOutlet(id) { return state.outlets.find(o => o.id === id); } function getAppointmentsFor(outletId, date) { return state.appointments.filter(a => a.outletId === outletId && a.date === date); } function getCovers(outletId, date) { return getAppointmentsFor(outletId, date).reduce((s, a) => s + a.pax, 0); } function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#d97706; color:#fff; padding:10px 16px; border-radius:6px; font-size:13px; z-index:99999; box-shadow:0 4px 12px rgba(0,0,0,0.2);'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2800); } function logAudit(action, detail) { const now = new Date(); const time = `${state.selectedDate} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+function getNationalityCode(nat) {
+  if (!nat) return 'GB';
+  const upper = nat.toUpperCase();
+  if (upper.length <= 3) return upper;
+  const map = {
+    'UNITED KINGDOM': 'GB',
+    'BRITISH': 'GB',
+    'RUSSIA': 'RU',
+    'RUSSIAN': 'RU',
+    'MALDIVES': 'MV',
+    'MALDIVIAN': 'MV',
+    'GERMANY': 'DE',
+    'GERMAN': 'DE',
+    'FRANCE': 'FR',
+    'FRENCH': 'FR',
+    'UNITED STATES': 'US',
+    'USA': 'US',
+    'AUSTRALIA': 'AU',
+    'CHINA': 'CN',
+    'INDIA': 'IN'
+  };
+  return map[upper] || upper.slice(0, 2);
+}
+function getOutlet(id) { return state.outlets.find(o => o.id === id); }
+function getAppointmentsFor(outletId, date) {
+  return state.appointments.filter(a => a.outletId === outletId && a.date === date);
+}
+function getCovers(outletId, date) {
+  return getAppointmentsFor(outletId, date).reduce((s, a) => s + a.pax, 0);
+}
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+function logAudit(action, detail) {
+  const now = new Date();
+  const time = `${state.selectedDate} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   state.auditLog.unshift({ time, user: state.user?.name || 'System', action, detail });
 }
 function canAdmin() { return state.user?.role === 'admin' || state.user?.role === 'gem'; }
@@ -86,7 +127,7 @@ function parseCSV(text) {
   const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
   const result = [];
   for (let i = 1; i < lines.length; i++) {
-    const currentLine = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(val => val.trim().replace(/^["']|["']$/g, ''));
+    const currentLine = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(val => val.trim().replace(/^["']\vert{}["']$/g, ''));
     const obj = {};
     headers.forEach((h, index) => {
       obj[h] = currentLine[index] || '';
@@ -98,45 +139,36 @@ function parseCSV(text) {
 
 function renderLogin() {
   document.getElementById('app').innerHTML = `
-    <div style="display:flex; justify-content:center; align-items:center; min-height:100vh; padding:16px; background:#0f172a;">
-      <div style="width:100%; max-width:400px; padding:24px; border-radius:12px; background:#1e293b; border:1px solid #334155; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
-        <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:24px">
-          <span style="color:#d97706; font-size:22px;">◇</span>
-          <div style="color:#f8fafc; font-size:16px;"><strong>Manik Reserve</strong></div>
+    <div class="login-screen">
+      <div class="login-card">
+        <div class="logo" style="justify-content:center;margin-bottom:28px">
+          <span class="logo-mark">◇</span>
+          <div class="logo-text"><strong>Manik Reserve</strong></div>
         </div>
-        <h1 style="font-size:22px; font-weight:500; text-align:center; margin-bottom:6px; color:#f8fafc;">Welcome back</h1>
-        <p style="text-align:center; color:#94a3b8; font-size:13px; margin-bottom:24px">Sign in to manage dining & experiences</p>
-        <div style="margin-bottom:16px;"><label style="display:block; margin-bottom:6px; font-size:13px; color:#cbd5e1;">Your name</label><input type="text" id="loginName" value="Ammadey" style="width:100%; padding:10px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:#f8fafc;" /></div>
-        <div style="margin-bottom:20px;"><label style="display:block; margin-bottom:6px; font-size:13px; color:#cbd5e1;">Role</label>
-          <div id="roleSelect" style="display:flex; gap:8px;">
-            <div class="role-option" data-role="gem" style="flex:1; text-align:center; padding:8px; border:1px solid #334155; color:#94a3b8; border-radius:6px; cursor:pointer; font-size:13px;">GEM</div>
-            <div class="role-option" data-role="fnb" style="flex:1; text-align:center; padding:8px; border:1px solid #334155; color:#94a3b8; border-radius:6px; cursor:pointer; font-size:13px;">F&B</div>
-            <div class="role-option selected" data-role="admin" style="flex:1; text-align:center; padding:8px; border:1px solid #d97706; background:rgba(217,119,6,0.15); color:#d97706; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;">Admin</div>
+        <h1 style="font-family:var(--serif);font-size:24px;font-weight:400;text-align:center;margin-bottom:6px">Welcome back</h1>
+        <p style="text-align:center;color:var(--ink-400);font-size:13px;margin-bottom:28px">Sign in to manage dining & experiences</p>
+        <div class="form-group"><label>Your name</label><input type="text" id="loginName" value="Aisha Hassan" /></div>
+        <div class="form-group"><label>Role</label>
+          <div class="role-select" id="roleSelect">
+            <div class="role-option selected" data-role="gem"><span class="role-icon">◇</span>GEM</div>
+            <div class="role-option" data-role="fnb"><span class="role-icon">🍽</span>F&B</div>
+            <div class="role-option" data-role="admin"><span class="role-icon">⚙</span>Admin</div>
           </div>
         </div>
-        <button id="loginBtn" style="width:100%; padding:12px; background:#d97706; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Sign in</button>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" id="loginBtn">Sign in</button>
+        <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--ink-400)">Mock login · no password required</p>
       </div>
     </div>`;
-  let selectedRole = 'admin';
+  let selectedRole = 'gem';
   document.querySelectorAll('.role-option').forEach(opt => {
     opt.onclick = () => {
-      document.querySelectorAll('.role-option').forEach(o => {
-        o.classList.remove('selected');
-        o.style.borderColor = '#334155';
-        o.style.background = 'transparent';
-        o.style.color = '#94a3b8';
-        o.style.fontWeight = '400';
-      });
+      document.querySelectorAll('.role-option').forEach(o => o.classList.remove('selected'));
       opt.classList.add('selected');
-      opt.style.borderColor = '#d97706';
-      opt.style.background = 'rgba(217,119,6,0.15)';
-      opt.style.color = '#d97706';
-      opt.style.fontWeight = '600';
       selectedRole = opt.dataset.role;
     };
   });
   document.getElementById('loginBtn').onclick = () => {
-    const name = document.getElementById('loginName').value.trim() || 'Ammadey';
+    const name = document.getElementById('loginName').value.trim() || 'Staff';
     state.user = { name, email: name.toLowerCase().replace(/\s+/g,'.') + '@manikreserve.com', role: selectedRole };
     state.loggedIn = true;
     mountApp();
@@ -145,51 +177,53 @@ function renderLogin() {
 
 function mountApp() {
   document.getElementById('app').innerHTML = `
-    <header style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; padding:12px 20px; background:#141a23; border-bottom:1px solid #1e293b; position:sticky; top:0; z-index:100;">
-      <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:6px;"><span style="color:#d97706; font-size:18px;">◇</span>
-          <div style="font-size:15px; color:#f8fafc;"><strong>Manik Reserve</strong></div>
+    <header class="topbar" style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; padding:12px 16px;">
+      <div class="topbar-left" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; width:100%;">
+        <div class="logo"><span class="logo-mark">◇</span>
+          <div class="logo-text"><strong>Manik Reserve</strong></div>
         </div>
-        <nav style="display:flex; gap:6px; overflow-x:auto;">
-          <button class="nav-item active" data-view="dashboard" style="background:none; border:none; color:#f8fafc; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:600; border-radius:4px;">Dashboard</button>
-          <button class="nav-item" data-view="appointments" style="background:none; border:none; color:#94a3b8; padding:6px 12px; cursor:pointer; font-size:13px; border-radius:4px;">Appointments</button>
-          <button class="nav-item" data-view="guest-schedule" style="background:none; border:none; color:#94a3b8; padding:6px 12px; cursor:pointer; font-size:13px; border-radius:4px;">Guest Schedule</button>
-          <button class="nav-item" data-view="reports" style="background:none; border:none; color:#94a3b8; padding:6px 12px; cursor:pointer; font-size:13px; border-radius:4px;">Reports</button>
-          <button class="nav-item" data-view="audit" style="background:none; border:none; color:#94a3b8; padding:6px 12px; cursor:pointer; font-size:13px; border-radius:4px;">Audit</button>
+        <nav class="main-nav" style="display:flex; gap:6px; overflow-x:auto; max-width:100%; padding-bottom:4px;">
+          <button class="nav-item active" data-view="dashboard">Dashboard</button>
+          <button class="nav-item" data-view="appointments">Appointments</button>
+          <button class="nav-item" data-view="guest-schedule">Guest Schedule</button>
+          <button class="nav-item" data-view="reports">Reports</button>
+          <button class="nav-item" data-view="audit">Audit</button>
         </nav>
       </div>
-      <div style="display:flex; align-items:center; gap:12px; margin-top:6px; flex-wrap:wrap;">
-        <button id="btnInHouseList" style="display:inline-flex; align-items:center; gap:6px; padding: 6px 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #f8fafc; border-radius: 6px; cursor: pointer; font-size:12px;">
-          <span>🏨 In-House</span>
+      <div class="topbar-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; justify-content:space-between;">
+        <button id="btnInHouseList" class="btn btn-secondary" title="Resort Operations Directory" style="display:inline-flex; align-items:center; gap:6px; padding: 6px 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 6px; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span style="font-size: 13px;">In-House</span>
         </button>
-        <div id="currentDateDisplay" style="font-size:12px; color:#cbd5e1; background:#1e293b; padding:4px 10px; border-radius:4px; border:1px solid #334155;"></div>
-        <div style="position:relative;">
-          <button id="userMenuBtn" style="background:none; border:none; display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <span id="userAvatar" style="width:28px;height:28px;background:#d97706;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;"></span>
+        <div class="date-pill" id="currentDateDisplay"></div>
+        <div class="user-menu" style="position:relative;">
+          <button class="user-btn" id="userMenuBtn">
+            <span class="avatar" id="userAvatar"></span>
+            <span class="user-name" id="userName"></span>
+            <span class="role-badge" id="userRole"></span>
           </button>
-          <div id="userDropdown" class="hidden" style="position:absolute; right:0; top:36px; width:180px; background:#1e293b; border:1px solid #334155; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.4); padding:6px 0; z-index:100;">
-            <div style="padding:8px 12px; border-bottom:1px solid #334155;"><strong id="ddName" style="display:block;font-size:12px;color:#f8fafc;"></strong><span id="ddEmail" style="font-size:10px;color:#94a3b8;"></span></div>
-            <button data-action="admin" style="width:100%;text-align:left;background:none;border:none;padding:8px 12px;color:#f8fafc;font-size:12px;cursor:pointer;">Outlet Settings</button>
-            <button data-action="audit" style="width:100%;text-align:left;background:none;border:none;padding:8px 12px;color:#f8fafc;font-size:12px;cursor:pointer;">Audit Logs</button>
-            <hr style="border:0;border-top:1px solid #334155;margin:4px 0;" /><button data-action="logout" style="width:100%;text-align:left;background:none;border:none;padding:8px 12px;color:#f87171;font-size:12px;cursor:pointer;">Sign out</button>
+          <div class="dropdown hidden" id="userDropdown" style="position:absolute; right:0; top:42px; width:200px; z-index:100;">
+            <div class="dropdown-header"><strong id="ddName"></strong><span id="ddEmail"></span></div>
+            <button data-action="admin">Outlet Settings</button>
+            <button data-action="audit">Audit Logs</button>
+            <hr /><button data-action="logout">Sign out</button>
           </div>
         </div>
       </div>
     </header>
-    <main id="mainContent" style="padding:20px; max-width:1280px; margin:0 auto; background:#0f172a; min-height:calc(100vh - 61px); color:#f8fafc;"></main>
-    <div id="modalRoot" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;justify-content:center;align-items:center;z-index:999;padding:16px;"></div>`;
+    <main id="mainContent" style="padding:16px; max-width:1400px; margin:0 auto; overflow-x:hidden;"></main>
+    <div id="modalRoot" class="modal-root hidden" style="padding:12px; box-sizing:border-box;"></div>`;
 
   const u = state.user;
   const initials = u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userName').textContent = u.name;
+  document.getElementById('userRole').textContent = u.role.toUpperCase();
   document.getElementById('ddName').textContent = u.name;
   document.getElementById('ddEmail').textContent = u.email;
 
   document.querySelectorAll('.nav-item').forEach(btn => {
-    btn.onclick = () => { 
-      state.view = btn.dataset.view; 
-      render(); 
-    };
+    btn.onclick = () => { state.view = btn.dataset.view; render(); };
   });
   document.getElementById('userMenuBtn').onclick = e => {
     e.stopPropagation();
@@ -216,11 +250,7 @@ function render() {
   if (!state.loggedIn) { renderLogin(); return; }
   document.getElementById('currentDateDisplay').textContent = formatDate(state.selectedDate);
   document.querySelectorAll('.nav-item').forEach(btn => {
-    const isActive = btn.dataset.view === state.view;
-    btn.classList.toggle('active', isActive);
-    btn.style.color = isActive ? '#f8fafc' : '#94a3b8';
-    btn.style.fontWeight = isActive ? '600' : '400';
-    btn.style.background = isActive ? '#1e293b' : 'transparent';
+    btn.classList.toggle('active', btn.dataset.view === state.view);
   });
   const main = document.getElementById('mainContent');
   const map = {
@@ -238,14 +268,13 @@ function renderDashboard() {
     const apptCount = getAppointmentsFor(o.id, state.selectedDate).length;
     const period = o.operatingPeriods[o.operatingPeriods.length - 1];
     const fc = forecastDemand(o.name, covers, period.maxPax);
-    return `<div class="outlet-card" data-outlet="${o.id}" style="background:#1e293b; border:1px solid #334155; border-radius:10px; padding:16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div style="width:40px; height:40px; background:#141a23; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:600; color:#d97706; border:1px solid #334155;">${o.icon}</div>
-        <div><h3 style="font-size:15px; margin:0 0 4px 0; color:#f8fafc;">${o.name}</h3>
-          <div style="font-size:12px; color:#94a3b8;">👥 ${covers} pax · ${apptCount} booking${apptCount !== 1 ? 's' : ''}<br>🕐 ${period.name}: ${period.start} –${period.end}</div>
-        </div>
+    return `<div class="outlet-card" data-outlet="${o.id}">
+      <div class="outlet-icon ${o.iconClass}">${o.icon}</div>
+      <div class="outlet-info"><h3>${o.name}</h3>
+        <div class="outlet-meta"><span>👥 ${covers} pax · ${apptCount} booking${apptCount !== 1 ? 's' : ''}</span>
+        <span>🕐 ${period.name}: ${period.start} – ${period.end}</span></div>
       </div>
-      <div style="text-align:right;"><div style="font-size:18px; font-weight:700; color:#d97706;">${covers}</div><div style="font-size:10px; text-transform:uppercase; color:#94a3b8;">${fc.level}</div></div>
+      <div class="outlet-stats"><div class="covers-num">${covers}</div><div class="covers-label">${fc.level}</div></div>
     </div>`;
   }).join('');
 
@@ -258,25 +287,16 @@ function renderDashboard() {
   const top = insights[0];
   let bannerHtml = '';
   if (top) {
-    bannerHtml = `<div style="background:rgba(217,119,6,0.12); border:1px solid #d97706; padding:12px 16px; border-radius:8px; margin-bottom:16px; display:flex; gap:12px; align-items:center;">
-      <div style="background:#d97706; color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">AI</div>
-      <div style="font-size:13px; color:#f8fafc;"><strong>Demand insight</strong><br>${top.message}</div></div>`;
+    bannerHtml = `<div class="ai-banner ${top.level}"><div class="ai-icon">AI</div><div><strong>Demand insight</strong><br>${top.message}</div></div>`;
   }
 
-  return `<div style="display:flex; flex-direction:column; gap:16px;">
-    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px;">
-      <div><h1 style="font-size:20px; font-weight:500; margin:0; color:#f8fafc;">Matrix for ${formatDate(state.selectedDate)}</h1>
-      <p style="font-size:13px; color:#94a3b8; margin:2px 0 0 0;">All outlets · click any outlet to open booking board</p></div>
-      <button class="btn btn-primary" id="btnNewAppt" style="background:#d97706; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">+ New Appointment</button>
-    </div>
+  return `<div class="view-header" style="flex-wrap:wrap; gap:12px;"><div>
+    <h1>Matrix for ${formatDate(state.selectedDate)}</h1>
+    <p>All outlets · click any outlet to open the booking board</p></div>
+    <div class="header-actions"><button class="btn btn-secondary" id="btnNewAppt">+ New Appointment</button></div></div>
     ${bannerHtml}
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
-      <div style="display:flex; flex-direction:column; gap:12px;">${cards}</div>
-      <div style="background:#1e293b; border:1px solid #334155; border-radius:10px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
-        <h3 style="font-size:14px; margin-bottom:12px; color:#f8fafc;">Calendar</h3>
-        ${renderCalendar()}
-      </div>
-    </div></div>`;
+    <div class="outlet-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;"><div class="outlet-list" style="display:flex; flex-direction:column; gap:12px;">${cards}</div>
+    <div class="side-panel" style="width:100%;"><h3>Calendar</h3>${renderCalendar()}</div></div>`;
 }
 
 function renderCalendar() {
@@ -286,27 +306,29 @@ function renderCalendar() {
   const monthName = new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   let days = '';
   const prevDays = new Date(year, month, 0).getDate();
-  for (let i = startDay - 1; i >= 0; i--) days += `<div style="color:#475569; text-align:center; padding:8px; font-size:12px;">${prevDays - i}</div>`;  const todayIso = '2026-10-25'; for (let day = 1; day <= daysInMonth; day++) { const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  for (let i = startDay - 1; i >= 0; i--) days += `<div class="cal-day other">${prevDays - i}</div>`;
+  
+  const todayIso = '2026-10-25';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const isSelected = iso === state.selectedDate;
     const isToday = iso === todayIso;
     
-    let style = 'text-align:center; padding:8px; font-size:12px; cursor:pointer; border-radius:6px;';
-    if (isSelected) style += 'background:#d97706; color:#fff; font-weight:600;';
-    else if (isToday) style += 'border:1px solid #d97706; color:#d97706; font-weight:600;';
-    else style += 'color:#f8fafc;';
+    let extraStyle = '';
+    if (isToday && !isSelected) {
+      extraStyle = 'border: 2px solid var(--accent, #38bdf8); border-radius: 50%;';
+    } else if (isToday && isSelected) {
+      extraStyle = 'box-shadow: inset 0 0 0 2px #fff;';
+    }
     
-    days += `<div data-date="${iso}" style="${style}">${day}</div>`;
+    days += `<div class="cal-day ${isSelected ? 'selected' : ''}" data-date="${iso}" style="${extraStyle}">${day}</div>`;
   }
-  return `<div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; font-weight:600; color:#f8fafc;">
-      <span>${monthName}</span>
-      <div><button data-cal="prev" style="background:none; border:1px solid #334155; color:#f8fafc; cursor:pointer; padding:2px 8px; border-radius:4px;">‹</button><button data-cal="next" style="background:none; border:1px solid #334155; color:#f8fafc; cursor:pointer; padding:2px 8px; border-radius:4px; margin-left:4px;">›</button></div>
-    </div>
-    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; font-size:11px; color:#94a3b8; margin-bottom:4px;">
-      <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
-    </div>
-    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px;">${days}</div>
-  </div>`;
+  return `<div class="calendar" style="width:100%; box-sizing:border-box;"><div class="cal-header"><span>${monthName}</span>
+    <div class="cal-nav"><button data-cal="prev">‹</button><button data-cal="next">›</button></div></div>
+    <div class="cal-grid">
+      <div class="cal-day-name">S</div><div class="cal-day-name">M</div><div class="cal-day-name">T</div>
+      <div class="cal-day-name">W</div><div class="cal-day-name">T</div><div class="cal-day-name">F</div>
+      <div class="cal-day-name">S</div>${days}</div></div>`;
 }
 
 function renderAppointments() {
@@ -317,8 +339,123 @@ function renderAppointments() {
   const slots = period.slots ? period.slots.map(s => s.time) : generateTimeSlots(period.start, period.end, 30);
   const maxPax = period.maxPax;
   const defaultPerSlot = Math.ceil(maxPax / Math.max(slots.length - 2, 1));
+
   const totalCovers = getCovers(outlet.id, state.selectedDate);
   const fc = forecastDemand(outlet.name, totalCovers, maxPax);
-
   const sideItems = state.outlets.filter(o => o.active).map(o =>
-    `<button class="outlet-side-item ${o.id === state.selectedOutletId ? 'active' : ''}" data-outlet="${o.id}" style="width:100%; text-align:left; background
+    `<button class="outlet-side-item ${o.id === state.selectedOutletId ? 'active' : ''}" data-outlet="${o.id}">
+      <span class="outlet-side-dot"></span>${o.short}</button>`).join('');
+
+  const rows = slots.map(time => {
+    const slotConfig = period.slots?.find(s => s.time === time);
+    const perSlot = slotConfig ? slotConfig.maxPax : defaultPerSlot;
+
+    const slotAppts = getAppointmentsFor(outlet.id, state.selectedDate).filter(a => a.time === time);
+    const used = slotAppts.reduce((s, a) => s + a.pax, 0);
+    const cards = slotAppts.map(a => {
+      const primaryName = a.customGuests && a.customGuests.length ? a.customGuests[0].name : (a.guestIds[0] ? (() => { const g = getGuestById(a.guestIds[0]); return g ? g.title + ' ' + g.lastName : 'Guest'; })() : 'Guest');
+      const totalGuestsCount = (a.customGuests?.length || 0) + (a.guestIds?.length || 0);
+      const more = totalGuestsCount > 1 ? '+' + (totalGuestsCount - 1) : '';
+      const allergies = detectAllergies(a.comments);
+      
+      let allergyTagsHtml = '';
+      if (allergies.length) {
+        allergyTagsHtml = '<div class="allergy-tags">' + allergies.map(x => '<span class="allergy-tag">' + x + '</span>').join('') + '</div>';
+      }
+
+      return '<div class="guest-card ' + (allergies.length ? 'has-allergy' : '') + '" data-appt="' + a.id + '">' +
+        '<div class="gc-room">' + (a.room || 'Ext') + (a.mealPlan ? ' · ' + a.mealPlan : '') + '</div>' +
+        '<div class="gc-name">' + primaryName + '</div>' +
+        '<div class="gc-meta">' +
+          '<span>' + (appointmentTypes.find(t => t.id === a.type)?.name || a.type) + '</span>' +
+          '<span style="color:var(--accent,#38bdf8);font-weight:600;">👥 ' + a.pax + ' Pax</span>' +
+          (more ? '<span>' + more + '</span>' : '') +
+        '</div>' +
+        allergyTagsHtml +
+      '</div>';
+    }).join('');
+    return '<div class="time-row" style="flex-direction:column;"><div class="time-label">' +
+      '<span class="time">' + formatTime(time) + '</span>' +
+      '<span class="cap ' + (used >= perSlot ? 'full' : '') + '">' + used + ' / ' + perSlot + '</span></div>' +
+      '<div class="slot-cards" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px;">' + cards + '</div></div>';
+  }).join('');
+
+  return '<div class="view-header" style="flex-wrap:wrap; gap:12px;"><div><h1>Appointments</h1><p>' + formatDate(state.selectedDate) + '</p></div>' +
+    '<div class="header-actions">' +
+      '<button class="btn btn-secondary" id="btnChangeDate">Change Date</button>' +
+      '<button class="btn btn-primary" id="btnNewAppt">+ New Appointment</button></div></div>' +
+    '<div class="ai-banner ' + fc.level + '"><div class="ai-icon">AI</div><div>' + fc.message + '</div></div>' +
+    '<div class="appt-layout" style="display:grid; grid-template-columns:1fr; gap:16px;"><div class="outlet-sidebar" style="display:flex; flex-direction:row; overflow-x:auto; gap:4px; padding-bottom:8px;">' + sideItems + '</div>' +
+    '<div class="appt-board"><div class="board-header" style="flex-wrap:wrap; gap:12px;">' +
+      '<div class="board-header-left">' +
+        '<div class="board-outlet-icon outlet-icon ' + outlet.iconClass + '">' + outlet.icon + '</div>' +
+        '<div><h2>' + outlet.name + '</h2>' +
+        '<div class="covers-line">Current Covers: ' + totalCovers + ' / ' + maxPax + ' · ' + period.name + ': ' + period.start + ' – ' + period.end + '</div></div>' +
+      '</div>' +
+      '<div class="board-actions" style="position:relative;">' +
+        '<button class="btn btn-ghost" id="btnResvReport">Resv. Report</button>' +
+        '<button class="btn btn-secondary" id="actionMenuBtn" style="padding: 8px 12px; margin-left: 8px;" title="Actions">📖</button>' +
+        '<div class="dropdown hidden" id="actionMenuDropdown" style="position:absolute; right:0; top:42px; width:240px; z-index:100; background:var(--surface,#1e293b); border:1px solid var(--sand-200,#334155); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.3); padding:6px 0;">' +
+          '<div class="action-dropdown-item" data-action="new-appt" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; cursor:pointer; font-size:13.5px; color:#f8fafc;"><span>New Appointment</span><span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:11px;">N</span></div>' +
+          '<div class="action-dropdown-item" data-action="change-date" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; cursor:pointer; font-size:13.5px; color:#f8fafc;"><span>Change Date</span><span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:11px;">D</span></div>' +
+          '<div class="action-dropdown-item" data-action="switch-outlet" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; cursor:pointer; font-size:13.5px; color:#f8fafc;"><span>Switch Outlet</span><span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:11px;">X</span></div>' +
+          '<div style="height:1px; background:rgba(255,255,255,0.1); margin:4px 0;"></div>' +
+          '<div class="action-dropdown-item" data-action="resv-report" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; cursor:pointer; font-size:13.5px; color:#f8fafc;"><span>Resv. Report</span><span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:11px;">R</span></div>' +
+          '<div class="action-dropdown-item" data-action="refresh-guests" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; cursor:pointer; font-size:13.5px; color:#f8fafc;"><span>Refresh Guests</span></div>' +
+          '<div class="action-dropdown-item" data-action="update-slots" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; cursor:pointer; font-size:13.5px; color:#f8fafc;"><span>Update Slots Capacity</span></div>' +
+          '<div class="action-dropdown-item" data-action="update-dates" style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; cursor:pointer; font-size:13.5px; color:#f8fafc;"><span>Update Operating Dates</span></div>' +
+        '</div>' +
+      '</div>' +
+    '</div><div class="time-grid">' + rows + '</div></div></div>';
+}
+
+function renderGuestSchedule() {
+  return `<div class="view-header"><div><h1>Guest Schedule</h1><p>Full-stay itinerary across all outlets</p></div></div>
+    <div style="max-width:520px; margin:20px auto; padding:0 12px; box-sizing:border-box;">
+      <div class="form-group relative"><label>Search by Room / Confirmation Number</label>
+        <input type="text" id="guestScheduleSearch" placeholder="e.g. 222 or SSK-77102" autocomplete="off" />
+        <div id="gsSearchResults" class="search-results hidden"></div></div>
+      <div id="guestScheduleResult" class="empty-state">
+        <div class="empty-icon">🗓</div><h3>No guest selected</h3>
+        <p>Search a room or confirmation to see their itinerary across all outlets.</p></div></div>`;
+}
+
+function renderReports() {
+  const outlet = getOutlet(state.selectedOutletId) || state.outlets.find(o => o.id === 'bottega');
+  const appts = getAppointmentsFor(outlet.id, state.selectedDate).sort((a, b) => a.time.localeCompare(b.time));
+  const byTime = {};
+  appts.forEach(a => { (byTime[a.time] ||= []).push(a); });
+  let totalAdults = 0, totalChildren = 0;
+  appts.forEach(a => {
+    const res = getReservation(a.reservationId);
+    if (res) { totalAdults += res.adults; totalChildren += res.children; }
+    totalAdults += (a.customGuests?.length || 0);
+  });
+  const summary = daySummary(outlet.name, appts, getReservation);
+  let rows = '';
+  Object.keys(byTime).sort().forEach(time => {
+    const group = byTime[time];
+    let ga = 0, gc = 0;
+    group.forEach(a => {
+      const res = getReservation(a.reservationId);
+      if (res) { ga += res.adults; gc += res.children; }
+      ga += (a.customGuests?.length || 0);
+    });
+    rows += '<tr class="slot-header" style="background:#f1f5f9; color:#0f172a; font-weight:600;"><td colspan="8" style="padding:10px 16px;">' + formatTime(time) + ' · Adults: ' + ga + ' · Children: ' + gc + '</td></tr>';
+    group.forEach(a => {
+      const res = getReservation(a.reservationId);
+      const allergies = detectAllergies(a.comments);
+      const mp = a.mealPlan || (res ? res.billing : 'HB');
+      
+      let allergyTagsHtml = '';
+      if (allergies.length) {
+        allergyTagsHtml = '<div class="allergy-tags" style="margin-top:4px">' + allergies.map(x => '<span class="allergy-tag" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600; display:inline-block; margin-right:4px;">' + x + '</span>').join('') + '</div>';
+      }
+
+      if (res) {
+        res.guests.forEach((g, idx) => {
+          const natCode = getNationalityCode(g.nationality);
+          rows += '<tr style="border-bottom:1px solid #e2e8f0; color:#0f172a;">' +
+            '<td style="padding:12px 16px; color:#0f172a;">' + res.room + '</td>' +
+            '<td style="padding:12px 16px; color:#0f172a; font-weight:500;">' + (g.title || '') + ' ' + (g.firstName || '') + ' ' + g.lastName + '</td>' +
+            '<td style="padding:12px 16px; color:#334155;">' + (idx === 0 ? (res.but
