@@ -127,7 +127,7 @@ function parseCSV(text) {
   const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
   const result = [];
   for (let i = 1; i < lines.length; i++) {
-    const currentLine = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(val => val.trim().replace(/^["']|["']$/g, ''));
+    const currentLine = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(val => val.trim().replace(/^["']\vert{}["']$/g, ''));
     const obj = {};
     headers.forEach((h, index) => {
       obj[h] = currentLine[index] || '';
@@ -177,12 +177,12 @@ function renderLogin() {
 
 function mountApp() {
   document.getElementById('app').innerHTML = `
-    <header class="topbar">
-      <div class="topbar-left">
+    <header class="topbar" style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; padding:12px 16px;">
+      <div class="topbar-left" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; width:100%;">
         <div class="logo"><span class="logo-mark">◇</span>
           <div class="logo-text"><strong>Manik Reserve</strong></div>
         </div>
-        <nav class="main-nav">
+        <nav class="main-nav" style="display:flex; gap:6px; overflow-x:auto; max-width:100%; padding-bottom:4px;">
           <button class="nav-item active" data-view="dashboard">Dashboard</button>
           <button class="nav-item" data-view="appointments">Appointments</button>
           <button class="nav-item" data-view="guest-schedule">Guest Schedule</button>
@@ -190,19 +190,19 @@ function mountApp() {
           <button class="nav-item" data-view="audit">Audit</button>
         </nav>
       </div>
-      <div class="topbar-right">
-        <button id="btnInHouseList" class="btn btn-secondary" title="Resort Operations Directory" style="display:inline-flex; align-items:center; gap:6px; padding: 6px 12px; margin-right: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 6px; cursor: pointer;">
+      <div class="topbar-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; justify-content:space-between;">
+        <button id="btnInHouseList" class="btn btn-secondary" title="Resort Operations Directory" style="display:inline-flex; align-items:center; gap:6px; padding: 6px 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 6px; cursor: pointer;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <span style="font-size: 13px;">In-House</span>
         </button>
         <div class="date-pill" id="currentDateDisplay"></div>
-        <div class="user-menu">
+        <div class="user-menu" style="position:relative;">
           <button class="user-btn" id="userMenuBtn">
             <span class="avatar" id="userAvatar"></span>
             <span class="user-name" id="userName"></span>
             <span class="role-badge" id="userRole"></span>
           </button>
-          <div class="dropdown hidden" id="userDropdown">
+          <div class="dropdown hidden" id="userDropdown" style="position:absolute; right:0; top:42px; width:200px; z-index:100;">
             <div class="dropdown-header"><strong id="ddName"></strong><span id="ddEmail"></span></div>
             <button data-action="admin">Outlet Settings</button>
             <button data-action="audit">Audit Logs</button>
@@ -211,8 +211,8 @@ function mountApp() {
         </div>
       </div>
     </header>
-    <main id="mainContent"></main>
-    <div id="modalRoot" class="modal-root hidden"></div>`;
+    <main id="mainContent" style="padding:16px; max-width:1400px; margin:0 auto; overflow-x:hidden;"></main>
+    <div id="modalRoot" class="modal-root hidden" style="padding:12px; box-sizing:border-box;"></div>`;
 
   const u = state.user;
   const initials = u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -290,13 +290,13 @@ function renderDashboard() {
     bannerHtml = `<div class="ai-banner ${top.level}"><div class="ai-icon">AI</div><div><strong>Demand insight</strong><br>${top.message}</div></div>`;
   }
 
-  return `<div class="view-header"><div>
+  return `<div class="view-header" style="flex-wrap:wrap; gap:12px;"><div>
     <h1>Matrix for ${formatDate(state.selectedDate)}</h1>
     <p>All outlets · click any outlet to open the booking board</p></div>
     <div class="header-actions"><button class="btn btn-secondary" id="btnNewAppt">+ New Appointment</button></div></div>
     ${bannerHtml}
-    <div class="outlet-grid"><div class="outlet-list">${cards}</div>
-    <div class="side-panel"><h3>Calendar</h3>${renderCalendar()}</div></div>`;
+    <div class="outlet-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;"><div class="outlet-list" style="display:flex; flex-direction:column; gap:12px;">${cards}</div>
+    <div class="side-panel" style="width:100%;"><h3>Calendar</h3>${renderCalendar()}</div></div>`;
 }
 
 function renderCalendar() {
@@ -323,7 +323,7 @@ function renderCalendar() {
     
     days += `<div class="cal-day ${isSelected ? 'selected' : ''}" data-date="${iso}" style="${extraStyle}">${day}</div>`;
   }
-  return `<div class="calendar"><div class="cal-header"><span>${monthName}</span>
+  return `<div class="calendar" style="width:100%; box-sizing:border-box;"><div class="cal-header"><span>${monthName}</span>
     <div class="cal-nav"><button data-cal="prev">‹</button><button data-cal="next">›</button></div></div>
     <div class="cal-grid">
       <div class="cal-day-name">S</div><div class="cal-day-name">M</div><div class="cal-day-name">T</div>
@@ -374,19 +374,19 @@ function renderAppointments() {
         allergyTagsHtml +
       '</div>';
     }).join('');
-    return '<div class="time-row"><div class="time-label">' +
+    return '<div class="time-row" style="flex-direction:column;"><div class="time-label">' +
       '<span class="time">' + formatTime(time) + '</span>' +
       '<span class="cap ' + (used >= perSlot ? 'full' : '') + '">' + used + ' / ' + perSlot + '</span></div>' +
-      '<div class="slot-cards">' + cards + '</div></div>';
+      '<div class="slot-cards" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px;">' + cards + '</div></div>';
   }).join('');
 
-  return '<div class="view-header"><div><h1>Appointments</h1><p>' + formatDate(state.selectedDate) + '</p></div>' +
+  return '<div class="view-header" style="flex-wrap:wrap; gap:12px;"><div><h1>Appointments</h1><p>' + formatDate(state.selectedDate) + '</p></div>' +
     '<div class="header-actions">' +
       '<button class="btn btn-secondary" id="btnChangeDate">Change Date</button>' +
       '<button class="btn btn-primary" id="btnNewAppt">+ New Appointment</button></div></div>' +
     '<div class="ai-banner ' + fc.level + '"><div class="ai-icon">AI</div><div>' + fc.message + '</div></div>' +
-    '<div class="appt-layout"><div class="outlet-sidebar">' + sideItems + '</div>' +
-    '<div class="appt-board"><div class="board-header">' +
+    '<div class="appt-layout" style="display:grid; grid-template-columns:1fr; gap:16px;"><div class="outlet-sidebar" style="display:flex; flex-direction:row; overflow-x:auto; gap:4px; padding-bottom:8px;">' + sideItems + '</div>' +
+    '<div class="appt-board"><div class="board-header" style="flex-wrap:wrap; gap:12px;">' +
       '<div class="board-header-left">' +
         '<div class="board-outlet-icon outlet-icon ' + outlet.iconClass + '">' + outlet.icon + '</div>' +
         '<div><h2>' + outlet.name + '</h2>' +
@@ -411,7 +411,7 @@ function renderAppointments() {
 
 function renderGuestSchedule() {
   return `<div class="view-header"><div><h1>Guest Schedule</h1><p>Full-stay itinerary across all outlets</p></div></div>
-    <div style="max-width:520px;margin:40px auto;">
+    <div style="max-width:520px; margin:20px auto; padding:0 12px; box-sizing:border-box;">
       <div class="form-group relative"><label>Search by Room / Confirmation Number</label>
         <input type="text" id="guestScheduleSearch" placeholder="e.g. 222 or SSK-77102" autocomplete="off" />
         <div id="gsSearchResults" class="search-results hidden"></div></div>
@@ -485,13 +485,13 @@ function renderReports() {
       }
     });
   });
-  return '<div class="view-header"><div>' +
+  return '<div class="view-header" style="flex-wrap:wrap; gap:12px;"><div>' +
     '<h1 style="color:#0f172a;">' + outlet.name + '</h1>' +
     '<p style="color:#475569;">Reservations for ' + formatDate(state.selectedDate) + ' · Total: ' + totalAdults + 'A + ' + totalChildren + 'C</p></div>' +
     '<div class="header-actions"><button class="btn btn-secondary" id="btnPrintReport">Print</button></div></div>' +
     '<div class="ai-banner" style="background:#f8fafc; border:1px solid #cbd5e1; color:#0f172a;"><div class="ai-icon" style="background:#e2e8f0; color:#0f172a;">AI</div><div>' + summary + '</div></div>' +
-    '<div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1);">' +
-      '<table class="report-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:13.5px;"><thead><tr style="background:#0f172a; color:#ffffff;">' +
+    '<div style="background:white; border:1px solid #cbd5e1; border-radius:12px; overflow-x:auto; box-shadow:0 1px 3px rgba(0,0,0,0.1);">' +
+      '<table class="report-table" style="width:100%; min-width:650px; border-collapse:collapse; text-align:left; font-size:13.5px;"><thead><tr style="background:#0f172a; color:#ffffff;">' +
         '<th style="padding:12px 16px; color:#ffffff;">Room</th>' +
         '<th style="padding:12px 16px; color:#ffffff;">Name</th>' +
         '<th style="padding:12px 16px; color:#ffffff;">GEM</th>' +
@@ -512,15 +512,15 @@ function renderAdmin() {
   const cards = state.outlets.map(o => `
     <div class="admin-outlet-card"><h3>${o.name}</h3>
       <span class="type-tag">${o.type}${o.active ? '' : ' · Inactive'}</span>
-      <div class="hours">${o.operatingPeriods.map(p => `${p.name}: ${p.start} – ${p.end} (max ${p.maxPax})`).join('<br>')}</div>
+      <div class="hours">${o.operatingPeriods.map(p => `${p.name}:${p.start} – ${p.end} (max${p.maxPax})`).join('<br>')}</div>
       <div class="card-actions">
         <button class="btn btn-secondary" data-edit-outlet="${o.id}">Edit</button>
         <button class="btn btn-ghost" data-toggle-outlet="${o.id}">${o.active ? 'Deactivate' : 'Activate'}</button>
       </div></div>`).join('');
-  return `<div class="view-header"><div><h1>Outlet Settings</h1>
+  return `<div class="view-header" style="flex-wrap:wrap; gap:12px;"><div><h1>Outlet Settings</h1>
     <p>Add, edit or deactivate restaurants and experiences</p></div>
     <div class="header-actions"><button class="btn btn-primary" id="btnAddOutlet">+ Add Outlet</button></div></div>
-    <div class="admin-grid">${cards}</div>`;
+    <div class="admin-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">${cards}</div>`;
 }
 
 function renderAudit() {
@@ -529,7 +529,7 @@ function renderAudit() {
     <div><span class="audit-action">${a.action}</span> · ${a.detail}</div>
     <div style="color:var(--ink-400);font-size:12px">${a.user}</div></div>`).join('');
   return `<div class="view-header"><div><h1>Audit Logs</h1><p>Who changed what, and when</p></div></div>
-    <div class="audit-list">${items}</div>`;
+    <div class="audit-list" style="display:flex; flex-direction:column; gap:8px;">${items}</div>`;
 }
 
 function openSlotCapacityModal() {
@@ -539,7 +539,7 @@ function openSlotCapacityModal() {
   const modalRoot = document.getElementById('modalRoot');
   modalRoot.classList.remove('hidden');
   modalRoot.innerHTML = `
-    <div class="modal" style="max-width:680px">
+    <div class="modal" style="max-width:680px; width:100%; box-sizing:border-box;">
       <div class="modal-header">
         <h2>Manage Slots Capacity</h2>
         <button class="modal-close" id="modalClose">×</button>
@@ -549,12 +549,12 @@ function openSlotCapacityModal() {
           <label>Name</label>
           <input type="text" id="capPeriodName" value="${period.name || 'Dinner'}" />
         </div>
-        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="form-row" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));">
           <div class="form-group"><label>Start at</label><input type="time" id="capStart" value="${period.start || '18:30'}" /></div>
           <div class="form-group"><label>End at</label><input type="time" id="capEnd" value="${period.end || '22:30'}" /></div>
           <div class="form-group"><label>Max Bookings / Day</label><input type="number" id="capMaxDay" value="${period.maxPax || 60}" /></div>
         </div>
-        <div class="form-row" style="grid-template-columns:1fr 1fr">
+        <div class="form-row" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));">
           <div class="form-group"><label>Timeslots Enabled</label>
             <select id="capEnabled"><option value="enabled">Enabled</option><option value="disabled">Disabled</option></select>
           </div>
@@ -566,7 +566,7 @@ function openSlotCapacityModal() {
             </div>
           </div>
         </div>
-        <div class="form-row" style="grid-template-columns:1fr 1fr">
+        <div class="form-row" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));">
           <div class="form-group"><label>Appointments Cut Off</label>
             <select><option value="enabled">Enabled</option><option value="disabled">Disabled</option></select>
           </div>
@@ -578,8 +578,8 @@ function openSlotCapacityModal() {
         
         <div style="margin-top:20px;">
           <h3 style="font-size:14px; font-weight:600; margin-bottom:10px;">Current list of Time Slots</h3>
-          <div style="border:1px solid var(--sand-200,#334155); border-radius:8px; overflow:hidden;">
-            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:13px;">
+          <div style="border:1px solid var(--sand-200,#334155); border-radius:8px; overflow-x:auto;">
+            <table style="width:100%; min-width:400px; border-collapse:collapse; text-align:left; font-size:13px;">
               <thead>
                 <tr style="border-bottom:1px solid var(--sand-200,#334155); background:rgba(255,255,255,0.02);">
                   <th style="padding:10px 14px;">Time</th>
@@ -594,854 +594,4 @@ function openSlotCapacityModal() {
                   return `
                   <tr style="border-bottom:1px solid var(--sand-100,#1e293b);">
                     <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="${t}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
-                    <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="${maxVal}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
-                    <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
-                  </tr>
-                `}).join('')}
-              </tbody>
-            </table>
-          </div>
-          <div style="margin-top:12px; text-align:center;">
-            <button class="btn btn-secondary" id="btnAddTimeSlot" style="width:100%; padding:8px;">+ Add Time Slot</button>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
-        <button class="btn btn-primary" id="modalSave">Save</button>
-      </div>
-    </div>`;
-
-  const close = () => { modalRoot.classList.add('hidden'); modalRoot.innerHTML = ''; };
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('modalCancel').onclick = close;
-  modalRoot.onclick = e => { if (e.target === modalRoot) close(); };
-
-  document.getElementById('btnGenSlots').onclick = () => {
-    const start = document.getElementById('capStart').value;
-    const end = document.getElementById('capEnd').value;
-    const defaultMax = parseInt(document.getElementById('genMaxPax').value) || 15;
-    const generatedTimes = generateTimeSlots(start, end, 30);
-    const tbody = document.getElementById('slotsTableBody');
-    tbody.innerHTML = generatedTimes.map(t => `
-      <tr style="border-bottom:1px solid var(--sand-100,#1e293b);">
-        <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="${t}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
-        <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="${defaultMax}" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
-        <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
-      </tr>
-    `).join('');
-    tbody.querySelectorAll('.slot-delete-btn').forEach(btn => {
-      btn.onclick = (e) => e.target.closest('tr').remove();
-    });
-  };
-
-  document.getElementById('btnAddTimeSlot').onclick = () => {
-    const tbody = document.getElementById('slotsTableBody');
-    const tr = document.createElement('tr');
-    tr.style.cssText = 'border-bottom:1px solid var(--sand-100,#1e293b);';
-    tr.innerHTML = `
-      <td style="padding:8px 14px;"><input type="time" class="slot-time-input" value="20:00" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px;" /></td>
-      <td style="padding:8px 14px;"><input type="number" class="slot-max-input" value="15" style="background:var(--surface-dark,#0f172a); border:1px solid var(--sand-200,#334155); color:#fff; padding:4px 8px; border-radius:4px; width:90px;" /></td>
-      <td style="padding:8px 14px; text-align:right;"><button class="btn btn-danger btn-sm slot-delete-btn" style="padding:4px 10px; font-size:11px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Delete</button></td>
-    `;
-    tr.querySelector('.slot-delete-btn').onclick = () => tr.remove();
-    tbody.appendChild(tr);
-  };
-
-  document.querySelectorAll('.slot-delete-btn').forEach(btn => {
-    btn.onclick = (e) => e.target.closest('tr').remove();
-  });
-
-  document.getElementById('modalSave').onclick = () => {
-    const name = document.getElementById('capPeriodName').value.trim();
-    const start = document.getElementById('capStart').value;
-    const end = document.getElementById('capEnd').value;
-    const maxPax = parseInt(document.getElementById('capMaxDay').value) || 40;
-    
-    const customSlots = [];
-    document.querySelectorAll('#slotsTableBody tr').forEach(tr => {
-      const tInput = tr.querySelector('.slot-time-input');
-      const mInput = tr.querySelector('.slot-max-input');
-      if (tInput && mInput) {
-        customSlots.push({
-          time: tInput.value,
-          maxPax: parseInt(mInput.value) || 15
-        });
-      }
-    });
-
-    period.name = name;
-    period.start = start;
-    period.end = end;
-    period.maxPax = maxPax;
-    period.slots = customSlots;
-
-    logAudit('Updated slot capacities', `${outlet.name} slots updated`);
-    toast('Slots capacity updated successfully');
-    close();
-    render();
-  };
-}
-
-function openAppointmentModal(apptId = null) {
-  const isEdit = !!apptId;
-  const appt = isEdit ? state.appointments.find(a => a.id === apptId) : null;
-  const outlet = getOutlet(appt?.outletId || state.selectedOutletId);
-  const period = outlet?.operatingPeriods[outlet.operatingPeriods.length - 1];
-  const slots = period?.slots ? period.slots.map(s => s.time) : (period ? generateTimeSlots(period.start, period.end, 30) : []);
-  const defaultPerSlot = period ? Math.ceil(period.maxPax / Math.max(slots.length - 2, 1)) : 8;
-  
-  let selectedGuests = [];
-  let customGuests = appt?.customGuests ? JSON.parse(JSON.stringify(appt.customGuests)) : [];
-  let selectedReservation = null;
-  let currentMealPlan = appt?.mealPlan || 'HB';
-
-  if (appt && !appt.isCustom && appt.guestIds) {
-    selectedGuests = appt.guestIds.map(id => getGuestById(id)).filter(Boolean);
-  }
-  if (appt && appt.reservationId) {
-    selectedReservation = getReservation(appt.reservationId);
-    if (selectedReservation?.billing) currentMealPlan = selectedReservation.billing;
-  }
-
-  const slotCovers = {};
-  slots.forEach(t => {
-    slotCovers[t] = getAppointmentsFor(outlet.id, state.selectedDate)
-      .filter(a => a.time === t && a.id !== apptId)
-      .reduce((s, a) => s + a.pax, 0);
-  });
-
-  const modalRoot = document.getElementById('modalRoot');
-  modalRoot.classList.remove('hidden');
-  modalRoot.innerHTML = `
-    <div class="modal" style="max-width:600px">
-      <div class="modal-header"><h2>${isEdit ? 'Edit Appointment' : 'Appointment Management'}</h2>
-        <button class="modal-close" id="modalClose">×</button></div>
-      <div class="modal-body">
-        <div class="form-group relative">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <label style="margin:0;">Search Profiles or Add Custom Guest (+CB)</label>
-          </div>
-          <div style="display:flex; gap:8px; margin-bottom:6px;">
-            <input type="text" id="profileSearch" placeholder="Room number, confirmation, or guest name…" autocomplete="off" style="flex:1;" />
-            <input type="text" id="customNationality" placeholder="Nat (e.g. GB, RU)" maxlength="3" style="width:120px; text-transform:uppercase;" />
-            <button type="button" class="btn btn-secondary" id="btnAddCB" style="padding:0 14px; font-size:12px; font-weight:600; background:var(--accent,#38bdf8); color:#0f172a; border:none; border-radius:6px; cursor:pointer;" title="Add Custom Booking">+CB</button>
-          </div>
-          <div id="profileResults" class="search-results hidden"></div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group"><label>Outlet</label>
-            <select id="apptOutlet">${state.outlets.filter(o => o.active).map(o =>
-              `<option value="${o.id}" ${o.id === (appt?.outletId || state.selectedOutletId) ? 'selected' : ''}>${o.name}</option>`).join('')}</select></div>
-          <div class="form-group"><label>Time Slot</label>
-            <select id="apptTime"><option value="">Select…</option>
-              ${slots.map(t => {
-                const sc = period?.slots?.find(s => s.time === t);
-                const maxC = sc ? sc.maxPax : defaultPerSlot;
-                return `<option value="${t}" ${appt?.time === t ? 'selected' : ''}>${formatTime(t)} (${slotCovers[t] || 0}/${maxC})</option>`;
-              }).join('')}
-            </select></div>
-          <div class="form-group"><label>Appointment</label>
-            <select id="apptType">${appointmentTypes.map(t =>
-              `<option value="${t.id}" ${appt?.type === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select></div>
-        </div>
-
-        <div class="form-row" style="grid-template-columns:1fr 2fr">
-          <div class="form-group"><label>Meal Plan</label>
-            <select id="apptMealPlan">
-              ${mealPlans.map(mp => `<option value="${mp.id}" ${currentMealPlan === mp.id ? 'selected' : ''}>${mp.name}</option>`).join('')}
-            </select></div>
-          <div class="form-group"><label>AI suggested slots</label>
-            <div class="suggest-chips" id="suggestChips"><span style="color:var(--ink-400);font-size:12px">Select guests first</span></div></div>
-        </div>
-
-        <div id="conflictWarning" class="ai-banner critical hidden" style="margin-bottom:12px"></div>
-        <div class="form-group">
-          <label>Guests <span id="guestCountBadge" style="color:var(--accent,#38bdf8); font-weight:600;">(0 total)</span></label>
-          <div id="guestChips"></div>
-        </div>
-        <div class="form-group"><label>Comments</label>
-          <textarea id="apptComments" placeholder="Allergies, special requests…">${appt?.comments || ''}</textarea>
-          <div id="allergyPreview" class="allergy-tags" style="margin-top:8px"></div></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
-        ${isEdit ? '<button class="btn btn-danger" id="modalDelete">Delete</button>' : ''}
-        <button class="btn btn-primary" id="modalSave">Save</button>
-      </div></div>`;
-
-  function renderChips() {
-    const el = document.getElementById('guestChips');
-    const badgeEl = document.getElementById('guestCountBadge');
-    const totalPax = selectedGuests.length + customGuests.length;
-    if (badgeEl) badgeEl.textContent = `(${totalPax} total)`;
-
-    if (!selectedGuests.length && !customGuests.length) {
-      el.innerHTML = '<span style="color:var(--ink-400);font-size:13px">No guests selected yet</span>';
-      updateSuggestions(); return;
-    }
-    let html = '';
-    
-    customGuests.forEach(cg => {
-      html += `
-        <div class="guest-chip" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:8px 12px; margin-bottom:6px;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:32px; height:32px; background:var(--surface-dark,#0f172a); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; color:var(--accent,#38bdf8);">${cg.initials}</div>
-            <div>
-              <div style="font-weight:600; font-size:13.5px; color:#fff;">${cg.name} ${cg.nationalityCode ? '[' + cg.nationalityCode.toUpperCase() + ']' : ''}</div>
-              <div style="font-size:12px; color:var(--ink-400);">Custom Guest</div>
-            </div>
-          </div>
-          <button class="btn btn-sm" data-remove-cg="${cg.id}" style="background:transparent; color:#ef4444; border:none; cursor:pointer; font-size:12px; font-weight:500;">Remove</button>
-        </div>`;
-    });
-
-    selectedGuests.forEach(g => {
-      html += `
-        <div class="guest-chip" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--sand-200,#334155); border-radius:8px; padding:8px 12px; margin-bottom:6px;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:32px; height:32px; background:var(--surface-dark,#0f172a); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; color:var(--accent,#38bdf8);">${(g.firstName?.[0] || 'G') + (g.lastName?.[0] || '')}</div>
-            <div>
-              <div style="font-weight:600; font-size:13.5px; color:#fff;">${g.title || ''} ${g.firstName || ''} ${g.lastName || ''}</div>
-              <div style="font-size:12px; color:var(--ink-400);">Room ${g.room} · ${g.billing || ''}</div>
-            </div>
-          </div>
-          <button class="btn btn-sm" data-remove-guest="${g.id}" style="background:transparent; color:#ef4444; border:none; cursor:pointer; font-size:12px; font-weight:500;">Remove</button>
-        </div>`;
-    });
-
-    el.innerHTML = html;
-
-    el.querySelectorAll('[data-remove-cg]').forEach(btn => {
-      btn.onclick = () => {
-        customGuests = customGuests.filter(cg => cg.id !== btn.dataset.removeCg);
-        renderChips();
-      };
-    });
-    el.querySelectorAll('[data-remove-guest]').forEach(btn => {
-      btn.onclick = () => {
-        selectedGuests = selectedGuests.filter(g => g.id !== btn.dataset.removeGuest);
-        renderChips();
-      };
-    });
-
-    updateSuggestions(); checkConflicts();
-  }
-
-  function updateSuggestions() {
-    const el = document.getElementById('suggestChips');
-    const totalPax = selectedGuests.length + customGuests.length;
-    if (!totalPax) {
-      el.innerHTML = '<span style="color:var(--ink-400);font-size:12px">Select guests first</span>'; return;
-    }
-    const dynamicPerSlot = (t) => {
-      const sc = period?.slots?.find(s => s.time === t);
-      return sc ? sc.maxPax : defaultPerSlot;
-    };
-    const suggestions = slots.map(t => ({
-      time: t,
-      remaining: dynamicPerSlot(t) - (slotCovers[t] || 0)
-    })).filter(s => s.remaining >= totalPax).slice(0, 3);
-
-    if (!suggestions.length) {
-      el.innerHTML = '<span style="color:var(--coral-500);font-size:12px">No slots fit this party size</span>'; return;
-    }
-    el.innerHTML = suggestions.map(s =>
-      `<button class="suggest-chip" data-suggest="${s.time}"><strong>${formatTime(s.time)}</strong> ${s.remaining} left</button>`).join('');
-    el.querySelectorAll('[data-suggest]').forEach(btn => {
-      btn.onclick = () => { document.getElementById('apptTime').value = btn.dataset.suggest; };
-    });
-  }
-
-  function checkConflicts() {
-    const warn = document.getElementById('conflictWarning');
-    if (!selectedReservation) { warn.classList.add('hidden'); return; }
-    const conflicts = detectConflicts(state.appointments, selectedReservation.reservationId, state.selectedDate, apptId);
-    if (!conflicts.length) { warn.classList.add('hidden'); return; }
-    warn.classList.remove('hidden');
-    warn.innerHTML = `<div class="ai-icon">!</div><div><strong>Possible conflict</strong><br>This guest already has ${conflicts.length} booking(s) today: ${
-      conflicts.map(c => `${getOutlet(c.outletId)?.name} at ${formatTime(c.time)}`).join(', ')}</div>`;
-  }
-
-  function updateAllergyPreview() {
-    const tags = detectAllergies(document.getElementById('apptComments').value);
-    document.getElementById('allergyPreview').innerHTML = tags.map(t => `<span class="allergy-tag">${t}</span>`).join('');
-  }
-
-  renderChips(); updateAllergyPreview();
-  document.getElementById('apptComments').oninput = updateAllergyPreview;
-
-  const searchInput = document.getElementById('profileSearch');
-  const resultsEl = document.getElementById('profileResults');
-  
-  function addCurrentSearchAsCustom() {
-    const q = searchInput.value.trim();
-    if (!q) return;
-    const nameParts = q.split(' ');
-    const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
-    const nationalityCode = document.getElementById('customNationality').value.trim();
-
-    customGuests.push({
-      id: 'cg_' + Date.now() + Math.random(),
-      name: q,
-      initials: initials,
-      room: 'Ext',
-      pax: 1,
-      nationalityCode
-    });
-    searchInput.value = '';
-    document.getElementById('customNationality').value = '';
-    resultsEl.classList.add('hidden');
-    renderChips();
-  }
-
-  document.getElementById('btnAddCB').onclick = addCurrentSearchAsCustom;
-
-  function searchProfiles(q) {
-    const query = q.toLowerCase();
-    const inHouseList = Array.isArray(state.inHouseGuests) ? state.inHouseGuests : [];
-    const inHouseMatches = inHouseList.filter(item => 
-      String(item.room).toLowerCase() === query || 
-      String(item.room).toLowerCase().includes(query) ||
-      (item.guests && item.guests.some(g => g.lastName.toLowerCase().includes(query)))
-    );
-    
-    if (inHouseMatches.length > 0) {
-      return inHouseMatches.map(ih => ({
-        reservationId: 'ih_' + ih.room + '_' + Date.now(),
-        confirmation: 'INHOUSE-' + ih.room,
-        room: ih.room,
-        butler: ih.gem,
-        billing: ih.mealPlan,
-        arrival: ih.arrival || state.selectedDate,
-        departure: ih.departure,
-        adults: ih.adults,
-        children: ih.children || 0,
-        guests: ih.guests ? ih.guests.map(g => ({
-          title: g.title || '',
-          firstName: g.firstName || '',
-          lastName: g.lastName || '',
-          nationality: g.nationality || 'GB'
-        })) : [{ title: '', firstName: '', lastName: ih.name || 'Guest', nationality: 'GB' }]
-      }));
-    }
-    return searchOpera(q);
-  }
-
-  searchInput.oninput = () => {
-    const q = searchInput.value.trim();
-    if (!q) { resultsEl.classList.add('hidden'); return; }
-    const results = searchProfiles(q);
-    
-    let html = '';
-    if (results.length) {
-      html += results.map(res => {
-        const guestNames = res.guests.map(g => (g.title ? g.title + ' ' : '') + g.lastName).join(' / ');
-        return '<div class="search-result-item" data-res="' + res.reservationId + '">' +
-          '<span class="sr-room">Villa ' + res.room + '</span>' +
-          '<div><div class="sr-name">' + guestNames + '</div>' +
-          '<div class="sr-meta">Dep: ' + (res.departure || '—') + ' · MP: ' + (res.billing || '—') + ' · GEM: ' + (res.butler || '—') + '</div></div>' +
-        '</div>';
-      }).join('');
-    } else {
-      html += '<div style="padding:10px 14px; color:var(--ink-400); font-size:13px;">No reservations found</div>';
-    }
-
-    html += '<div class="search-result-item" id="addCustomProfileOption" style="border-top:1px solid var(--sand-200,#334155); color:var(--accent,#38bdf8); font-weight:500; padding:10px 14px; cursor:pointer;">' +
-      '+ Add "' + q + '" as custom guest (+CB)' +
-    '</div>';
-
-    resultsEl.classList.remove('hidden');
-    resultsEl.innerHTML = html;
-
-    resultsEl.querySelectorAll('[data-res]').forEach(item => {
-      item.onclick = () => {
-        const matchedInHouse = (Array.isArray(state.inHouseGuests) ? state.inHouseGuests : []).find(ih => 'ih_' + ih.room + '_' === item.dataset.res.slice(0, item.dataset.res.lastIndexOf('_') + 1));
-        const res = matchedInHouse ? results.find(r => r.reservationId === item.dataset.res) : getReservation(item.dataset.res);
-        
-        selectedReservation = res;
-        selectedGuests.push(...res.guests.map(g => ({ ...g, room: res.room, billing: res.billing })));
-        
-        if (res.billing) {
-          document.getElementById('apptMealPlan').value = res.billing;
-        }
-
-        const dietaryList = Array.isArray(state.dietarySheet) ? state.dietarySheet : [];
-        const dietaryRecord = dietaryList.find(d => String(d.room) === String(res.room));
-        const remarksField = document.getElementById('apptComments');
-        if (dietaryRecord && dietaryRecord.allergies) {
-          remarksField.value = '⚠️ Allergies / Preferences: ' + dietaryRecord.allergies;
-        } else if (res.notes) { 
-          remarksField.value = res.notes; 
-        }
-        
-        updateAllergyPreview();
-        searchInput.value = '';
-        resultsEl.classList.add('hidden');
-        renderChips();
-      };
-    });
-
-    const addCustomOpt = document.getElementById('addCustomProfileOption');
-    if (addCustomOpt) {
-      addCustomOpt.onclick = addCurrentSearchAsCustom;
-    }
-  };
-
-  const close = () => { modalRoot.classList.add('hidden'); modalRoot.innerHTML = ''; };
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('modalCancel').onclick = close;
-  modalRoot.onclick = e => { if (e.target === modalRoot) close(); };
-
-  document.getElementById('modalSave').onclick = () => {
-    const outletId = document.getElementById('apptOutlet').value;
-    const time = document.getElementById('apptTime').value;
-    const type = document.getElementById('apptType').value;
-    const mealPlan = document.getElementById('apptMealPlan').value;
-    const comments = document.getElementById('apptComments').value.trim();
-    
-    const searchVal = searchInput.value.trim();
-    if (selectedGuests.length === 0 && customGuests.length === 0 && searchVal) {
-      const nameParts = searchVal.split(' ');
-      const initials = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CG';
-      const nationalityCode = document.getElementById('customNationality').value.trim();
-      customGuests.push({
-        id: 'cg_' + Date.now() + Math.random(),
-        name: searchVal,
-        initials: initials,
-        room: 'Ext',
-        pax: 1,
-        nationalityCode
-      });
-    }
-
-    const totalPax = selectedGuests.length + customGuests.length;
-    if (totalPax === 0) { alert('Select or add at least one guest'); return; }
-    if (!time) { alert('Select a time slot'); return; }
-
-    if (isEdit) {
-      const idx = state.appointments.findIndex(a => a.id === apptId);
-      state.appointments[idx] = {
-        ...state.appointments[idx],
-        outletId,
-        time,
-        type,
-        mealPlan,
-        comments,
-        customGuests: customGuests,
-        reservationId: selectedReservation ? selectedReservation.reservationId : state.appointments[idx].reservationId,
-        room: selectedReservation ? selectedReservation.room : state.appointments[idx].room,
-        guestIds: selectedGuests.map(g => g.id),
-        pax: totalPax
-      };
-      logAudit('Updated appointment', '→ ' + getOutlet(outletId).name + ' ' + time);
-      toast('Appointment updated');
-    } else {
-      state.appointments.push({
-        id: 'a' + Date.now(),
-        outletId,
-        date: state.selectedDate,
-        time,
-        type,
-        mealPlan,
-        customGuests: customGuests,
-        reservationId: selectedReservation ? selectedReservation.reservationId : null,
-        room: selectedReservation ? selectedReservation.room : 'Ext',
-        guestIds: selectedGuests.map(g => g.id),
-        pax: totalPax,
-        comments,
-        createdBy: state.user.name
-      });
-      logAudit('Created appointment', '→ ' + getOutlet(outletId).name + ' ' + time);
-      toast('Appointment created');
-    }
-    close(); render();
-  };
-
-  if (isEdit) {
-    document.getElementById('modalDelete').onclick = () => {
-      if (confirm('Delete this appointment?')) {
-        const a = state.appointments.find(x => x.id === apptId);
-        state.appointments = state.appointments.filter(x => x.id !== apptId);
-        logAudit('Deleted appointment', 'from ' + getOutlet(a?.outletId)?.name);
-        toast('Appointment deleted'); close(); render();
-      }
-    };
-  }
-}
-
-function openOutletModal(outletId = null) {
-  const isEdit = !!outletId;
-  const o = isEdit ? getOutlet(outletId) : null;
-  const modalRoot = document.getElementById('modalRoot');
-  modalRoot.classList.remove('hidden');
-  modalRoot.innerHTML = `
-    <div class="modal"><div class="modal-header">
-      <h2>${isEdit ? 'Edit Outlet' : 'Add Outlet'}</h2>
-      <button class="modal-close" id="modalClose">×</button></div>
-      <div class="modal-body">
-        <div class="form-group"><label>Name</label>
-          <input type="text" id="outName" value="${o?.name || ''}" placeholder="e.g. Beach BBQ" /></div>
-        <div class="form-row" style="grid-template-columns:1fr 1fr">
-          <div class="form-group"><label>Short name</label>
-            <input type="text" id="outShort" value="${o?.short || ''}" placeholder="BBQ" /></div>
-          <div class="form-group"><label>Type</label>
-            <input type="text" id="outType" value="${o?.type || ''}" placeholder="Dining / Experience" /></div>
-        </div>
-        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
-          <div class="form-group"><label>Period name</label>
-            <input type="text" id="outPeriod" value="${o?.operatingPeriods?.[0]?.name || 'Dinner'}" /></div>
-          <div class="form-group"><label>Start</label>
-            <input type="time" id="outStart" value="${o?.operatingPeriods?.[0]?.start || '18:30'}" /></div>
-          <div class="form-group"><label>End</label>
-            <input type="time" id="outEnd" value="${o?.operatingPeriods?.[0]?.end || '22:30'}" /></div>
-        </div>
-        <div class="form-group"><label>Max covers</label>
-          <input type="number" id="outMax" value="${o?.operatingPeriods?.[0]?.maxPax || 40}" /></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
-        <button class="btn btn-primary" id="modalSave">Save</button>
-      </div></div>`;
-  const close = () => { modalRoot.classList.add('hidden'); modalRoot.innerHTML = ''; };
-  document.getElementById('modalClose').onclick = close;
-  document.getElementById('modalCancel').onclick = close;
-  document.getElementById('modalSave').onclick = () => {
-    const name = document.getElementById('outName').value.trim();
-    if (!name) { alert('Name required'); return; }
-    const period = {
-      name: document.getElementById('outPeriod').value || 'Service',
-      start: document.getElementById('outStart').value,
-      end: document.getElementById('outEnd').value,
-      maxPax: parseInt(document.getElementById('outMax').value) || 40
-    };
-    if (isEdit) {
-      Object.assign(o, {
-        name, short: document.getElementById('outShort').value || name,
-        type: document.getElementById('outType').value || 'Dining', operatingPeriods: [period]
-      });
-      logAudit('Updated outlet', name); toast('Outlet updated');
-    } else {
-      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      state.outlets.push({
-        id, name, short: document.getElementById('outShort').value || name,
-        type: document.getElementById('outType').value || 'Dining',
-        iconClass: 'market', icon: name[0].toUpperCase(),
-        operatingPeriods: [period], active: true
-      });
-      logAudit('Created outlet', name); toast('Outlet added');
-    }
-    close(); render();
-  };
-}
-
-function openInHouseModal() {
-  let modal = document.getElementById('inHouseModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'inHouseModal';
-    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); display:flex; justify-content:center; align-items:center; z-index:9999;';
-    document.body.appendChild(modal);
-  }
-
-  const inHouseList = Array.isArray(state.inHouseGuests) ? state.inHouseGuests : [];
-  const dietaryList = Array.isArray(state.dietarySheet) ? state.dietarySheet : [];
-  const inHouseCount = inHouseList.length;
-  const dietaryCount = dietaryList.length;
-
-  const inHouseRows = inHouseList.map(g => {
-    const guestNames = g.guests ? g.guests.map(x => (x.title ? x.title + ' ' : '') + x.lastName).join(' / ') : (g.name || '');
-    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.06);">' +
-      '<td style="padding:12px 10px; font-weight:600; color:#38bdf8;">Villa ' + g.room + '</td>' +
-      '<td style="padding:12px 10px;">' + guestNames + '</td>' +
-      '<td style="padding:12px 10px; color:rgba(255,255,255,0.8);">' + (g.departure || '—') + '</td>' +
-      '<td style="padding:12px 10px;"><span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 6px; border-radius:4px; font-size:11px;">' + (g.mealPlan || 'HB') + '</span></td>' +
-      '<td style="padding:12px 10px; color:#f472b6;">' + (g.gem || '—') + '</td>' +
-    '</tr>';
-  }).join('');
-
-  modal.innerHTML = `
-    <div style="background:#141a23; border:1px solid rgba(255,255,255,0.15); width:90%; max-width:1050px; max-height:85vh; border-radius:12px; display:flex; flex-direction:column; overflow:hidden; color:#fff; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
-      
-      <!-- Header with Dual Uploads & Timestamps -->
-      <div style="padding:20px 24px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <h2 style="margin:0; font-size:18px; font-weight:600;">🏨 Resort Operations Directory</h2>
-          <p style="margin:4px 0 0 0; font-size:13px; color:rgba(255,255,255,0.6);">Manage daily in-house manifests and guest dietary profiles</p>
-        </div>
-        
-        <div style="display:flex; gap:16px; align-items:center;">
-          <!-- In-House Upload -->
-          <div style="text-align:center;">
-            <label style="cursor:pointer; padding:6px 12px; font-size:12px; background:#3b82f6; color:#fff; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
-              📁 Upload In-House List (JSON/CSV)
-              <input type="file" id="dailyListUpload" accept=".json,.csv" style="display:none;" />
-            </label>
-            <div style="font-size:10px; color:rgba(255,255,255,0.5); margin-top:3px;">Updated: <span>${state.inHouseUpdated}</span> (${inHouseCount} villas)</div>
-          </div>
-
-          <!-- Dietary Upload -->
-          <div style="text-align:center;">
-            <label style="cursor:pointer; padding:6px 12px; font-size:12px; background:rgba(234,179,8,0.2); color:#facc15; border:1px solid rgba(234,179,8,0.4); border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
-              🥗 Upload Dietary Sheet (JSON/CSV)
-              <input type="file" id="dietaryUpload" accept=".json,.csv" style="display:none;" />
-            </label>
-            <div style="font-size:10px; color:rgba(255,255,255,0.5); margin-top:3px;">Updated: <span>${state.dietaryUpdated}</span> (${dietaryCount} records)</div>
-          </div>
-
-          <button id="closeInHouseModal" style="background:transparent; border:none; color:#fff; font-size:22px; cursor:pointer; margin-left:10px;">&times;</button>
-        </div>
-      </div>
-
-      <!-- Content Table -->
-      <div style="padding:20px 24px; overflow-y:auto; flex:1;">
-        ${inHouseCount === 0 ? `
-          <div style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
-            <p style="font-size:15px; margin-bottom:8px;">No in-house guest manifest uploaded yet.</p>
-            <p style="font-size:13px;">Use the buttons above to load today's JSON or CSV data files.</p>
-          </div>
-        ` : `
-          <table style="width:100%; border-collapse:collapse; font-size:13px;">
-            <thead>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.15); text-align:left; color:rgba(255,255,255,0.7);">
-                <th style="padding:10px;">Villa</th>
-                <th style="padding:10px;">Guest Name(s)</th>
-                <th style="padding:10px;">Departure</th>
-                <th style="padding:10px;">Meal Plan</th>
-                <th style="padding:10px;">GEM</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${inHouseRows}
-            </tbody>
-          </table>
-        `}
-      </div>
-    </div>
-  `;
-
-  document.getElementById('closeInHouseModal').onclick = () => modal.remove();
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-
-  document.getElementById('dailyListUpload').onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        let data = [];
-        if (file.name.endsWith('.csv')) {
-          const rawRows = parseCSV(text);
-          data = rawRows.map(row => {
-            const fullName = row.guestname || row.name || row.guest || '';
-            const parts = fullName.split(' ');
-            const lastName = parts.pop() || '';
-            const firstName = parts.join(' ') || '';
-            return {
-              room: row.room || row.villa || '',
-              guests: [{ title: row.title || 'Mr', firstName: firstName, lastName: lastName, nationality: row.nationality || 'GB' }],
-              departure: row.departure || row.dep || '2026-10-30',
-              mealPlan: row.mealplan || row.mp || 'HB',
-              gem: row.gem || row.butler || 'Aisha',
-              adults: parseInt(row.adults) || 2,
-              children: parseInt(row.children) || 0
-            };
-          });
-        } else {
-          data = JSON.parse(text);
-          if (!Array.isArray(data)) data = [data];
-        }
-        const timestamp = new Date().toLocaleString();
-        state.inHouseGuests = data;
-        state.inHouseUpdated = timestamp;
-        localStorage.setItem('manik_inhouse_guests', JSON.stringify(data));
-        localStorage.setItem('manik_inhouse_updated', timestamp);
-        openInHouseModal();
-      } catch (err) { alert('Invalid In-House file format.'); }
-    };
-    reader.readAsText(file);
-  };
-
-  document.getElementById('dietaryUpload').onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        let data = [];
-        if (file.name.endsWith('.csv')) {
-          const rawRows = parseCSV(text);
-          data = rawRows.map(row => ({
-            room: row.room || row.villa || '',
-            allergies: row.allergies || row.dietary || row.notes || ''
-          }));
-        } else {
-          data = JSON.parse(text);
-          if (!Array.isArray(data)) data = [data];
-        }
-        const timestamp = new Date().toLocaleString();
-        state.dietarySheet = data;
-        state.dietaryUpdated = timestamp;
-        localStorage.setItem('manik_dietary_sheet', JSON.stringify(data));
-        localStorage.setItem('manik_dietary_updated', timestamp);
-        openInHouseModal();
-      } catch (err) { alert('Invalid Dietary file format.'); }
-    };
-    reader.readAsText(file);
-  };
-}
-
-function bindViewEvents() {
-  document.querySelectorAll('.outlet-card').forEach(card => {
-    card.onclick = () => { state.selectedOutletId = card.dataset.outlet; state.view = 'appointments'; render(); };
-  });
-  
-  document.querySelectorAll('.cal-day[data-date]').forEach(day => {
-    day.onclick = () => { 
-      state.selectedDate = day.dataset.date;
-      const [y, m] = day.dataset.date.split('-').map(Number);
-      state.calendarYear = y;
-      state.calendarMonth = m - 1;
-      render(); 
-    };
-  });
-
-  document.querySelectorAll('.cal-nav button').forEach(btn => {
-    btn.onclick = () => {
-      const dir = btn.dataset.cal;
-      if (dir === 'prev') {
-        state.calendarMonth--;
-        if (state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
-      } else {
-        state.calendarMonth++;
-        if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
-      }
-      render();
-    };
-  });
-
-  document.querySelectorAll('.outlet-side-item').forEach(btn => {
-    btn.onclick = () => { state.selectedOutletId = btn.dataset.outlet; render(); };
-  });
-  document.querySelectorAll('.guest-card').forEach(card => {
-    card.onclick = () => openAppointmentModal(card.dataset.appt);
-  });
-  document.getElementById('btnNewAppt')?.addEventListener('click', () => openAppointmentModal());
-  document.getElementById('btnResvReport')?.addEventListener('click', () => { state.view = 'reports'; render(); });
-  document.getElementById('btnPrintReport')?.addEventListener('click', () => window.print());
-  document.getElementById('btnAddOutlet')?.addEventListener('click', () => openOutletModal());
-  
-  const actionMenuBtn = document.getElementById('actionMenuBtn');
-  const actionMenuDropdown = document.getElementById('actionMenuDropdown');
-  if (actionMenuBtn && actionMenuDropdown) {
-    actionMenuBtn.onclick = (e) => {
-      e.stopPropagation();
-      actionMenuDropdown.classList.toggle('hidden');
-    };
-    document.addEventListener('click', () => actionMenuDropdown.classList.add('hidden'));
-    actionMenuDropdown.onclick = (e) => {
-      e.stopPropagation();
-      const item = e.target.closest('.action-dropdown-item');
-      if (!item) return;
-      actionMenuDropdown.classList.add('hidden');
-      const action = item.dataset.action;
-      if (action === 'new-appt') openAppointmentModal();
-      if (action === 'change-date') {
-        const newD = prompt('Enter date (YYYY-MM-DD):', state.selectedDate);
-        if (newD) { 
-          state.selectedDate = newD; 
-          const [y, m] = newD.split('-').map(Number);
-          state.calendarYear = y;
-          state.calendarMonth = m - 1;
-          render(); 
-        }
-      }
-      if (action === 'switch-outlet') {
-        const nextO = state.outlets[(state.outlets.findIndex(o => o.id === state.selectedOutletId) + 1) % state.outlets.length];
-        state.selectedOutletId = nextO.id;
-        render();
-      }
-      if (action === 'resv-report') { state.view = 'reports'; render(); }
-      if (action === 'refresh-guests') { toast('Guests list refreshed'); }
-      if (action === 'update-slots') { openSlotCapacityModal(); }
-      if (action === 'update-dates') { alert('Operating dates configuration'); }
-    };
-  }
-
-  document.querySelectorAll('[data-edit-outlet]').forEach(btn => {
-    btn.onclick = () => openOutletModal(btn.dataset.editOutlet);
-  });
-  document.querySelectorAll('[data-toggle-outlet]').forEach(btn => {
-    btn.onclick = () => {
-      const o = getOutlet(btn.dataset.toggleOutlet);
-      o.active = !o.active;
-      logAudit(o.active ? 'Activated outlet' : 'Deactivated outlet', o.name);
-      toast(o.name + ' ' + (o.active ? 'activated' : 'deactivated'));
-      render();
-    };
-  });
-  const gsSearch = document.getElementById('guestScheduleSearch');
-  if (gsSearch) {
-    gsSearch.oninput = () => {
-      const results = searchOpera(gsSearch.value);
-      const el = document.getElementById('gsSearchResults');
-      if (!results.length) { el.classList.add('hidden'); return; }
-      el.classList.remove('hidden');
-      el.innerHTML = results.map(res => {
-        const guestNames = res.guests.map(g => g.title + ' ' + g.lastName).join(', ');
-        return '<div class="search-result-item" data-res="' + res.reservationId + '">' +
-          '<span class="sr-room">' + res.room + '</span>' +
-          '<div><div class="sr-name">' + guestNames + '</div>' +
-          '<div class="sr-meta">' + res.confirmation + '</div></div></div>';
-      }).join('');
-      el.querySelectorAll('.search-result-item').forEach(item => {
-        item.onclick = () => {
-          const res = getReservation(item.dataset.res);
-          el.classList.add('hidden');
-          gsSearch.value = 'Room ' + res.room;
-          showGuestItinerary(res);
-        };
-      });
-    };
-  }
-}
-
-function showGuestItinerary(res) {
-  const guestAppts = state.appointments
-    .filter(a => a.reservationId === res.reservationId)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  const resultEl = document.getElementById('guestScheduleResult');
-  if (!guestAppts.length) {
-    resultEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🗓</div>' +
-      '<h3>No appointments yet</h3><p>Room ' + res.room + ' has no bookings across outlets.</p></div>';
-    return;
-  }
-  const guestFullName = res.guests.map(g => g.title + ' ' + g.firstName + ' ' + g.lastName).join(' & ');
-  const apptsHtml = guestAppts.map(a => {
-    const o = getOutlet(a.outletId);
-    const allergies = detectAllergies(a.comments);
-    
-    let allergyTagsHtml = '';
-    if (allergies.length) {
-      allergyTagsHtml = '<div class="allergy-tags" style="margin-top:4px">' + allergies.map(x => '<span class="allergy-tag">' + x + '</span>').join('') + '</div>';
-    }
-
-    return '<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--sand-100)">' +
-      '<div style="min-width:90px;font-weight:600;color:var(--sage-700)">' + formatTime(a.time) + '</div>' +
-      '<div><strong>' + (o?.name || a.outletId) + '</strong>' + (a.mealPlan ? ' · ' + a.mealPlan : '') +
-        '<div style="font-size:12.5px;color:var(--ink-400)">' + (appointmentTypes.find(t => t.id === a.type)?.name || a.type) + ' · ' + a.pax + ' pax</div>' +
-        allergyTagsHtml +
-      '</div></div>';
-  }).join('');
-
-  resultEl.innerHTML = '<div style="text-align:left;background:white;border:1px solid var(--sand-200);border-radius:12px;padding:20px;">' +
-    '<h3 style="margin-bottom:4px">' + guestFullName + '</h3>' +
-    '<p style="color:var(--ink-400);font-size:13.5px;margin-bottom:16px">' +
-      'Room ' + res.room + ' · ' + res.confirmation + ' · GEM ' + res.butler + ' · ' + formatShortDate(res.arrival) + ' → ' + formatShortDate(res.departure) + '</p>' +
-    apptsHtml + '</div>';
-}
-
-renderLogin();
+                    <td style="padding:8px 14px;"><input type="number" class="slot-max-input"
